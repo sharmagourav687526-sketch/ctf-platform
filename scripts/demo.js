@@ -153,15 +153,77 @@ const byName = Object.fromEntries(challenges.map((c) => [c.name, c]));
 // password for all demo accounts: hackfest2026
 const DEMO_PASSWORD_HASH = bcrypt.hashSync('hackfest2026', 4);
 
+const ALL = ['Welcome', 'Base64 Basics', 'Caesar Salad', 'View Source', 'Regex Flag'];
+const CRYPTO = ['Welcome', 'Base64 Basics', 'Caesar Salad'];
+const WEB    = ['Welcome', 'View Source', 'Regex Flag'];
+const MID    = ['Welcome', 'Base64 Basics', 'View Source'];
+const TOP    = ['Welcome', 'Base64 Basics', 'Caesar Salad', 'View Source', 'Regex Flag'];
+
 const players = [
-  { username: 'alice_pwn',   email: 'alice@demo.hackfest', solves: ['Welcome', 'Base64 Basics', 'Caesar Salad', 'Regex Flag'] },
-  { username: 'b0b_w3b',     email: 'bob@demo.hackfest',   solves: ['Welcome', 'View Source', 'Regex Flag'] },
-  { username: 'cr4ck3r',     email: 'cracker@demo.hackfest', solves: ['Welcome', 'Base64 Basics', 'Caesar Salad'] },
-  { username: 'x0r_ghost',   email: 'xor@demo.hackfest',   solves: ['Welcome', 'View Source'] },
-  { username: 'h4cker_kim',  email: 'kim@demo.hackfest',   solves: ['Welcome', 'Regex Flag'] },
-  { username: 'newbie_dev',  email: 'newbie@demo.hackfest', solves: ['Welcome'] },
-  { username: 'rev_ninja',   email: 'rev@demo.hackfest',   solves: ['Welcome', 'Base64 Basics', 'View Source'] },
-  { username: 'sec_m0nk',    email: 'monk@demo.hackfest',  solves: ['Base64 Basics'] },
+  // ── existing 8 (kept for idempotency) ──────────────────────────────────────
+  { username: 'alice_pwn',    email: 'alice@demo.hackfest',    solves: ['Welcome', 'Base64 Basics', 'Caesar Salad', 'Regex Flag'] },
+  { username: 'b0b_w3b',      email: 'bob@demo.hackfest',      solves: WEB },
+  { username: 'cr4ck3r',      email: 'cracker@demo.hackfest',  solves: CRYPTO },
+  { username: 'x0r_ghost',    email: 'xor@demo.hackfest',      solves: ['Welcome', 'View Source'] },
+  { username: 'h4cker_kim',   email: 'kim@demo.hackfest',      solves: ['Welcome', 'Regex Flag'] },
+  { username: 'newbie_dev',   email: 'newbie@demo.hackfest',   solves: ['Welcome'] },
+  { username: 'rev_ninja',    email: 'rev@demo.hackfest',      solves: MID },
+  { username: 'sec_m0nk',     email: 'monk@demo.hackfest',     solves: ['Base64 Basics'] },
+
+  // ── top-tier: solved all 5 ─────────────────────────────────────────────────
+  { username: 'pwnmaster',    email: 'pwn@demo.hackfest',      solves: TOP },
+  { username: 'z3r0day',      email: 'z3r0@demo.hackfest',     solves: TOP },
+  { username: 'n1ghtfall',    email: 'night@demo.hackfest',    solves: TOP },
+  { username: 'shellsh0ck',   email: 'shell@demo.hackfest',    solves: TOP },
+  { username: 'vuln_hunt3r',  email: 'vuln@demo.hackfest',     solves: TOP },
+
+  // ── strong: 4 out of 5 ─────────────────────────────────────────────────────
+  { username: 'h3x_wizard',   email: 'hex@demo.hackfest',      solves: ['Welcome', 'Base64 Basics', 'Caesar Salad', 'View Source'] },
+  { username: 'b1nary_beast', email: 'bin@demo.hackfest',      solves: ['Welcome', 'Base64 Basics', 'View Source', 'Regex Flag'] },
+  { username: 'cryptk1ng',    email: 'crypt@demo.hackfest',    solves: ['Welcome', 'Base64 Basics', 'Caesar Salad', 'Regex Flag'] },
+  { username: 'packet_r4t',   email: 'packet@demo.hackfest',   solves: ['Welcome', 'Caesar Salad', 'View Source', 'Regex Flag'] },
+  { username: '0x41414141',   email: '0x41@demo.hackfest',     solves: ['Welcome', 'Base64 Basics', 'Caesar Salad', 'View Source'] },
+  { username: 'ghost_proto',  email: 'ghost@demo.hackfest',    solves: ['Welcome', 'Base64 Basics', 'View Source', 'Regex Flag'] },
+  { username: 'l0g1c_b0mb',   email: 'logic@demo.hackfest',   solves: ['Base64 Basics', 'Caesar Salad', 'View Source', 'Regex Flag'] },
+  { username: 'bitfl1p',      email: 'bitflip@demo.hackfest',  solves: ['Welcome', 'Caesar Salad', 'View Source', 'Regex Flag'] },
+
+  // ── mid-tier: 3 challenges ─────────────────────────────────────────────────
+  { username: 'rop_chain',    email: 'rop@demo.hackfest',      solves: CRYPTO },
+  { username: 'xss_master',   email: 'xss@demo.hackfest',      solves: WEB },
+  { username: 'fuzz_it',      email: 'fuzz@demo.hackfest',     solves: MID },
+  { username: 'r3v_eng',      email: 'reng@demo.hackfest',     solves: ['Welcome', 'Caesar Salad', 'Regex Flag'] },
+  { username: 'mem_leak',     email: 'memleak@demo.hackfest',  solves: ['Welcome', 'Base64 Basics', 'Caesar Salad'] },
+  { username: 'sql_dr0p',     email: 'sql@demo.hackfest',      solves: ['Welcome', 'View Source', 'Regex Flag'] },
+  { username: 'heap_spray',   email: 'heap@demo.hackfest',     solves: ['Base64 Basics', 'Caesar Salad', 'View Source'] },
+  { username: 'de4dbeef',     email: 'dead@demo.hackfest',     solves: ['Welcome', 'Base64 Basics', 'Regex Flag'] },
+  { username: 'n3trunner',    email: 'net@demo.hackfest',      solves: MID },
+  { username: 'dark_c0de',    email: 'dark@demo.hackfest',     solves: ['Welcome', 'Caesar Salad', 'View Source'] },
+
+  // ── lower-mid: 2 challenges ────────────────────────────────────────────────
+  { username: 'nmap_ninja',   email: 'nmap@demo.hackfest',     solves: ['Welcome', 'Base64 Basics'] },
+  { username: 'byte_bandit',  email: 'byte@demo.hackfest',     solves: ['Welcome', 'View Source'] },
+  { username: 'c0de_b0mb',    email: 'codebomb@demo.hackfest', solves: ['Welcome', 'Caesar Salad'] },
+  { username: 'stack_sm4sh',  email: 'stack@demo.hackfest',    solves: ['Welcome', 'Regex Flag'] },
+  { username: 'f0rmat_str',   email: 'fmt@demo.hackfest',      solves: ['Base64 Basics', 'View Source'] },
+  { username: 'expl0it_db',   email: 'edb@demo.hackfest',      solves: ['Welcome', 'Caesar Salad'] },
+  { username: 'w1ldcard',     email: 'wild@demo.hackfest',     solves: ['Welcome', 'Base64 Basics'] },
+  { username: 'n00b_hunter',  email: 'n00b@demo.hackfest',     solves: ['Welcome', 'View Source'] },
+  { username: 'r00t_cause',   email: 'root@demo.hackfest',     solves: ['Caesar Salad', 'Regex Flag'] },
+  { username: 'overfl0w',     email: 'overflow@demo.hackfest', solves: ['Welcome', 'Regex Flag'] },
+  { username: 'p4ssw0rd',     email: 'pass@demo.hackfest',     solves: ['Welcome', 'Base64 Basics'] },
+  { username: 'c1pher_t3xt',  email: 'cipher@demo.hackfest',   solves: ['Base64 Basics', 'Caesar Salad'] },
+
+  // ── beginners: 1 challenge ─────────────────────────────────────────────────
+  { username: 'l33t_n00b',    email: 'leet@demo.hackfest',     solves: ['Welcome'] },
+  { username: 'h4x0r2026',    email: 'h4x0r@demo.hackfest',    solves: ['Welcome'] },
+  { username: 'trying_hard',  email: 'trying@demo.hackfest',   solves: ['Welcome'] },
+  { username: 'justlearning', email: 'learn@demo.hackfest',    solves: ['Welcome'] },
+  { username: 'ctf_first',    email: 'first@demo.hackfest',    solves: ['Welcome'] },
+  { username: 'sec_student',  email: 'student@demo.hackfest',  solves: ['Base64 Basics'] },
+  { username: 'cmd_injector', email: 'cmdi@demo.hackfest',     solves: ['View Source'] },
+  { username: 'anon_1337',    email: 'anon@demo.hackfest',     solves: ['Welcome'] },
+  { username: 'bit_ripper',   email: 'bitr@demo.hackfest',     solves: ['Welcome'] },
+  { username: 'ph03nix',      email: 'phoenix@demo.hackfest',  solves: ['Regex Flag'] },
 ];
 
 const insertUser = db.prepare(`INSERT OR IGNORE INTO users (username, email, password_hash, role, created_at) VALUES (?, ?, ?, 'user', ?)`);
