@@ -1,0 +1,17 @@
+<%- include('partials/header') %>
+<section class="narrow">
+  <h1>Login</h1>
+  <% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
+  <form method="post" action="/login" class="form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Username or email
+      <input type="text" name="name" value="<%= name %>" required autofocus autocomplete="username">
+    </label>
+    <label>Password
+      <input type="password" name="password" required autocomplete="current-password">
+    </label>
+    <button type="submit" class="btn">Login</button>
+  </form>
+  <% if (settings.registration_open === '1') { %><p class="muted">No account? <a href="/register">Register</a></p><% } %>
+</section>
+<%- include('partials/footer') %>

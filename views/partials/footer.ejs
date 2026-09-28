@@ -1,0 +1,12 @@
+</main>
+<footer class="footer">
+  <span><%= settings.ctf_name %></span>
+  <span class="muted">Hack. Learn. Capture the flag.</span>
+</footer>
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+<script src="/js/bg.js"></script>
+<script src="/js/common.js"></script>
+<% if (typeof scripts !== 'undefined') { scripts.forEach(function (s) { %><script src="/js/<%= s %>.js"></script>
+<% }); } %>
+</body>
+</html>

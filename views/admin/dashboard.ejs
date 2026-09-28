@@ -1,0 +1,50 @@
+<%- include('../partials/header') %>
+<%- include('../partials/admin_nav') %>
+<h1>Dashboard</h1>
+<div class="quick-actions">
+  <a class="quick" href="/admin/challenges/new"><strong>+ New challenge</strong><span class="muted small">Create one and attach files</span></a>
+  <a class="quick" href="/admin/challenges"><strong>Manage challenges</strong><span class="muted small">Edit, hide, upload files</span></a>
+  <a class="quick" href="/admin/announcements"><strong>Post announcement</strong><span class="muted small">Notify all players</span></a>
+  <a class="quick" href="/admin/settings"><strong>Event settings</strong><span class="muted small">Times, mode, registration</span></a>
+</div>
+<div class="stats">
+  <div class="stat"><span class="stat-n"><%= stats.users %></span><span class="muted">Users</span></div>
+  <% if (settings.mode === 'teams') { %><div class="stat"><span class="stat-n"><%= stats.teams %></span><span class="muted">Teams</span></div><% } %>
+  <div class="stat"><span class="stat-n"><%= stats.challenges %></span><span class="muted">Challenges</span></div>
+  <div class="stat"><span class="stat-n"><%= stats.solves %></span><span class="muted">Solves</span></div>
+  <div class="stat"><span class="stat-n"><%= stats.submissions %></span><span class="muted">Submissions</span></div>
+  <div class="stat"><span class="stat-n"><%= stats.submissions ? Math.round(stats.correct / stats.submissions * 100) : 0 %>%</span><span class="muted">Correct rate</span></div>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>Give or remove points</h2>
+    <form method="post" action="/admin/awards" class="form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Username <input type="text" name="username" required></label>
+      <label>Reason <input type="text" name="name" required maxlength="100"></label>
+      <label>Points (negative to deduct) <input type="number" name="value" required></label>
+      <button type="submit" class="btn">Apply</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Exports</h2>
+    <p><a href="/admin/export/scoreboard.csv">Scoreboard (CSV)</a></p>
+    <p><a href="/admin/export/submissions.csv">All submissions (CSV)</a></p>
+  </section>
+</div>
+
+<h2>Recent submissions</h2>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>When</th><th>User</th><th>Challenge</th><th>Result</th></tr></thead>
+    <tbody>
+      <% recent.forEach(function (s) { %>
+        <tr><td><%= fmtDate(s.created_at) %></td><td><%= s.username %></td><td><%= s.challenge %></td>
+          <td><span class="tag <%= s.correct ? 'tag-ok' : 'tag-bad' %>"><%= s.correct ? 'correct' : 'wrong' %></span></td></tr>
+      <% }); %>
+      <% if (!recent.length) { %><tr><td colspan="4" class="muted">Nothing yet.</td></tr><% } %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/footer') %>

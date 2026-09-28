@@ -1,0 +1,63 @@
+<%- include('partials/header') %>
+<%
+  const displayName = profile.name || profile.username;
+  const byCategory = {};
+  solves.forEach(function (s) {
+    byCategory[s.category] = byCategory[s.category] || { n: 0, pts: 0 };
+    byCategory[s.category].n += 1;
+    byCategory[s.category].pts += s.value;
+  });
+  const cats = Object.keys(byCategory).sort();
+%>
+<section class="profile-head">
+  <span class="avatar avatar-lg" data-name="<%= displayName %>"><%= displayName.charAt(0).toUpperCase() %></span>
+  <div>
+    <h1><%= displayName %></h1>
+    <p class="muted">
+      <% if (kind === 'user' && team) { %>Team: <a href="/teams/<%= team.id %>"><%= team.name %></a> &middot; <% } %>
+      <% if (kind === 'user' && profile.country) { %>Country: <%= profile.country %> &middot; <% } %>
+      Joined <%= fmtDate(profile.created_at) %>
+    </p>
+  </div>
+  <div class="profile-score">
+    <span class="stat-n"><%= total %></span>
+    <span class="muted">points &middot; <%= solves.length %> solves</span>
+  </div>
+</section>
+
+<% if (members.length) { %>
+  <h2>Members</h2>
+  <ul class="chips-list">
+    <% members.forEach(function (m) { %><li><a class="chip" href="/users/<%= m.id %>"><%= m.username %></a></li><% }); %>
+  </ul>
+<% } %>
+
+<% if (cats.length) { %>
+  <h2>Skills</h2>
+  <div class="card skills">
+    <% cats.forEach(function (c) { %>
+      <div class="skill">
+        <span class="tag" data-cat="<%= c %>"><%= c %></span>
+        <div class="bar"><div class="bar-fill" data-w="<%= Math.round(byCategory[c].pts / Math.max(1, total) * 100) %>" data-cat="<%= c %>"></div></div>
+        <span class="muted small"><%= byCategory[c].n %> solved &middot; <%= byCategory[c].pts %> pts</span>
+      </div>
+    <% }); %>
+  </div>
+<% } %>
+
+<h2>Solves</h2>
+<% if (!solves.length) { %>
+  <p class="muted">No solves yet.</p>
+<% } else { %>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Challenge</th><th>Category</th><th class="num">Points</th><% if (kind === 'team') { %><th>Solved by</th><% } %><th>When</th></tr></thead>
+      <tbody>
+        <% solves.forEach(function (s) { %>
+          <tr><td><%= s.name %></td><td><span class="tag" data-cat="<%= s.category %>"><%= s.category %></span></td><td class="num"><%= s.value %></td><% if (kind === 'team') { %><td><%= s.solver %></td><% } %><td><%= fmtDate(s.at) %></td></tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+<%- include('partials/footer') %>

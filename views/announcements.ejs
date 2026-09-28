@@ -1,0 +1,13 @@
+<%- include('partials/header') %>
+<h1>News &amp; announcements</h1>
+<% if (!items.length) { %>
+  <p class="muted">No announcements yet. Check back during the event.</p>
+<% } %>
+<% items.forEach(function (a) { %>
+  <article class="card" data-announcement="<%= a.id %>">
+    <h3><%= a.title %></h3>
+    <p class="muted small"><%= fmtDate(a.created_at) %></p>
+    <div class="md"><%- renderMarkdown(a.body) %></div>
+  </article>
+<% }); %>
+<%- include('partials/footer', { scripts: ['news'] }) %>

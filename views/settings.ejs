@@ -1,0 +1,20 @@
+<%- include('partials/header') %>
+<section class="narrow">
+  <h1>Settings</h1>
+  <% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
+  <form method="post" action="/settings" class="form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Country code (optional)
+      <input type="text" name="country" value="<%= user.country || '' %>" maxlength="2" placeholder="IN">
+    </label>
+    <h2>Change password</h2>
+    <label>Current password
+      <input type="password" name="current_password" autocomplete="current-password">
+    </label>
+    <label>New password
+      <input type="password" name="new_password" minlength="8" maxlength="72" autocomplete="new-password">
+    </label>
+    <button type="submit" class="btn">Save</button>
+  </form>
+</section>
+<%- include('partials/footer') %>

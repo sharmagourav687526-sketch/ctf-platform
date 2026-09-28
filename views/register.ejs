@@ -1,0 +1,24 @@
+<%- include('partials/header') %>
+<section class="narrow">
+  <h1>Register</h1>
+  <% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
+  <form method="post" action="/register" class="form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Username
+      <input type="text" name="username" value="<%= form.username || '' %>" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_.\-]+" autocomplete="username">
+      <small class="muted">3-24 characters: letters, numbers, . _ -</small>
+    </label>
+    <label>Email
+      <input type="email" name="email" value="<%= form.email || '' %>" required maxlength="254" autocomplete="email">
+    </label>
+    <label>Password
+      <input type="password" name="password" required minlength="8" maxlength="72" autocomplete="new-password">
+    </label>
+    <label>Confirm password
+      <input type="password" name="confirm" required minlength="8" maxlength="72" autocomplete="new-password">
+    </label>
+    <button type="submit" class="btn">Create account</button>
+  </form>
+  <p class="muted">Already registered? <a href="/login">Login</a></p>
+</section>
+<%- include('partials/footer') %>

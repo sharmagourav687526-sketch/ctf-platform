@@ -1,0 +1,94 @@
+<%- include('partials/header') %>
+<%
+  const termLines = [
+    { cmd: 'whoami', out: user ? user.username : 'guest' },
+    { cmd: 'ls challenges/', out: categories.length ? categories.join('   ') : '(coming soon)' },
+    { cmd: './capture --event "' + settings.ctf_name + '"', out: 'flag{are_you_ready?}' }
+  ];
+%>
+<section class="hero">
+  <div class="hero-text">
+    <p class="eyebrow">Capture The Flag</p>
+    <h1 class="glitch"><%= settings.ctf_name %></h1>
+    <p class="lead">Break things, solve puzzles, and race up the scoreboard. Web, crypto, reversing, pwn, forensics &mdash; find the flag, get the points.</p>
+    <div class="actions">
+      <% if (user) { %>
+        <a class="btn btn-lg" href="/challenges">Start hacking</a>
+      <% } else { %>
+        <% if (settings.registration_open === '1') { %><a class="btn btn-lg" href="/register">Join the CTF</a><% } %>
+        <a class="btn btn-lg btn-ghost" href="/login">Login</a>
+      <% } %>
+      <a class="btn btn-lg btn-ghost" href="/scoreboard">Scoreboard</a>
+    </div>
+    <% if (event.start || event.end) { %>
+      <p class="muted small hero-times">
+        <% if (event.start) { %>Starts <%= fmtDate(event.start) %><% } %>
+        <% if (event.start && event.end) { %> &middot; <% } %>
+        <% if (event.end) { %>Ends <%= fmtDate(event.end) %><% } %>
+      </p>
+    <% } %>
+  </div>
+  <div class="terminal" aria-hidden="true">
+    <div class="terminal-bar"><i></i><i></i><i></i><span>player@ctf: ~</span></div>
+    <pre class="terminal-body" id="term" data-lines="<%= JSON.stringify(termLines) %>"></pre>
+  </div>
+</section>
+
+<section class="stats">
+  <div class="stat"><span class="stat-n" data-count="<%= stats.players %>">0</span><span class="muted"><%= stats.players === 1 ? 'Player' : 'Players' %></span></div>
+  <% if (stats.teams !== null) { %><div class="stat"><span class="stat-n" data-count="<%= stats.teams %>">0</span><span class="muted">Teams</span></div><% } %>
+  <div class="stat"><span class="stat-n" data-count="<%= stats.challenges %>">0</span><span class="muted">Challenges</span></div>
+  <div class="stat"><span class="stat-n" data-count="<%= stats.solves %>">0</span><span class="muted">Flags captured</span></div>
+</section>
+
+<% if (showBoard) { %>
+<div class="grid-2 home-grid">
+  <section class="card">
+    <div class="row-between"><h2>Top players</h2><a href="/scoreboard" class="small">Full scoreboard &rarr;</a></div>
+    <% if (!top.length) { %>
+      <p class="muted">No scores yet &mdash; be the first on the board.</p>
+    <% } else { %>
+      <ol class="leaders">
+        <% top.forEach(function (o) { %>
+          <li>
+            <span class="rank rank-<%= o.rank %>"><%= o.rank %></span>
+            <span class="avatar" data-name="<%= o.name %>"><%= o.name.charAt(0).toUpperCase() %></span>
+            <a href="/<%= o.type === 'team' ? 'teams' : 'users' %>/<%= o.id %>" class="leader-name"><%= o.name %></a>
+            <span class="leader-score"><%= o.score %></span>
+          </li>
+        <% }); %>
+      </ol>
+    <% } %>
+  </section>
+  <section class="card">
+    <div class="row-between"><h2>Live activity</h2><span class="live-dot" title="Updates automatically">live</span></div>
+    <% if (!activity.length) { %>
+      <p class="muted">Nothing captured yet.</p>
+    <% } else { %>
+      <ul class="feed">
+        <% activity.forEach(function (a) { %>
+          <li>
+            <span class="feed-icon"><%= a.firstBlood ? '🩸' : '🚩' %></span>
+            <span><strong><%= a.who %></strong> solved <em><%= a.challenge %></em><% if (a.firstBlood) { %> <span class="tag tag-bad">first blood</span><% } %></span>
+            <span class="feed-pts">+<%= a.value %></span>
+          </li>
+        <% }); %>
+      </ul>
+    <% } %>
+  </section>
+</div>
+<% } %>
+
+<% if (announcements.length) { %>
+<section>
+  <div class="row-between"><h2>Announcements</h2><a href="/announcements" class="small">All news &rarr;</a></div>
+  <% announcements.forEach(function (a) { %>
+    <article class="card">
+      <h3><%= a.title %></h3>
+      <p class="muted small"><%= fmtDate(a.created_at) %></p>
+      <div class="md"><%- renderMarkdown(a.body) %></div>
+    </article>
+  <% }); %>
+</section>
+<% } %>
+<%- include('partials/footer', { scripts: ['home'] }) %>

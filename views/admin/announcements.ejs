@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<%- include('../partials/admin_nav') %>
+<h1>Announcements</h1>
+<form method="post" action="/admin/announcements" class="form card">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <label>Title <input type="text" name="title" required maxlength="150"></label>
+  <label>Message (Markdown) <textarea name="body" rows="4" required maxlength="5000"></textarea></label>
+  <button type="submit" class="btn">Post</button>
+</form>
+<% items.forEach(function (a) { %>
+  <article class="card">
+    <div class="row-between">
+      <h3><%= a.title %></h3>
+      <form method="post" action="/admin/announcements/<%= a.id %>/delete" class="inline" data-confirm="Delete this announcement?">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="btn btn-small btn-danger">Delete</button>
+      </form>
+    </div>
+    <p class="muted small"><%= fmtDate(a.created_at) %></p>
+    <div class="md"><%- renderMarkdown(a.body) %></div>
+  </article>
+<% }); %>
+<%- include('../partials/footer') %>

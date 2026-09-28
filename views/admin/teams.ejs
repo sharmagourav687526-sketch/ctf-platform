@@ -1,0 +1,28 @@
+<%- include('../partials/header') %>
+<%- include('../partials/admin_nav') %>
+<h1>Teams</h1>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>ID</th><th>Team</th><th class="num">Members</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+      <% teams.forEach(function (t) { %>
+        <tr>
+          <td><%= t.id %></td>
+          <td><a href="/teams/<%= t.id %>"><%= t.name %></a></td>
+          <td class="num"><%= t.members %></td>
+          <td><%= t.banned ? 'banned' : '' %> <%= t.hidden ? 'hidden' : '' %></td>
+          <td class="actions-cell">
+            <% [[t.banned ? 'unban' : 'ban', t.banned ? 'Unban' : 'Ban', 'btn-danger'], [t.hidden ? 'unhide' : 'hide', t.hidden ? 'Unhide' : 'Hide', 'btn-ghost'], ['delete', 'Delete', 'btn-danger']].forEach(function (a) { %>
+              <form method="post" action="/admin/teams/<%= t.id %>/<%= a[0] %>" class="inline" <% if (a[0] !== 'unban' && a[0] !== 'unhide' && a[0] !== 'hide') { %>data-confirm="<%= a[1] %> team <%= t.name %>?"<% } %>>
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-small <%= a[2] %>"><%= a[1] %></button>
+              </form>
+            <% }); %>
+          </td>
+        </tr>
+      <% }); %>
+      <% if (!teams.length) { %><tr><td colspan="5" class="muted">No teams yet.</td></tr><% } %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,61 @@
+'use strict';
+
+const crypto = require('crypto');
+const { getSettings } = require('./db');
+const { eventState } = require('./services/ctf');
+
+/** Load the logged-in user, site settings and CSRF token for every request. */
+function context(db) {
+  return (req, res, next) => {
+    const settings = getSettings(db);
+    let user = null;
+    if (req.session.userId) {
+      user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId) || null;
+      if (!user || user.banned) {
+        user = null;
+        delete req.session.userId;
+      }
+    }
+    if (!req.session.csrf) req.session.csrf = crypto.randomBytes(24).toString('hex');
+    req.user = user;
+    req.settings = settings;
+    res.locals.user = user;
+    res.locals.settings = settings;
+    res.locals.event = eventState(settings);
+    res.locals.csrfToken = req.session.csrf;
+    res.locals.flash = req.session.flash || null;
+    delete req.session.flash;
+    res.locals.path = req.path;
+    next();
+  };
+}
+
+/** Reject state-changing requests that don't carry the session's CSRF token. */
+function csrf(req, res, next) {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  const sent = (req.body && req.body._csrf) || req.get('x-csrf-token') || req.query._csrf;
+  const expected = req.session.csrf;
+  const ok = typeof sent === 'string' && expected && sent.length === expected.length
+    && crypto.timingSafeEqual(Buffer.from(sent), Buffer.from(expected));
+  if (!ok) return res.status(403).render('error', { title: 'Forbidden', message: 'Invalid or missing CSRF token. Reload the page and try again.' });
+  next();
+}
+
+function requireLogin(req, res, next) {
+  if (req.user) return next();
+  if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Login required' });
+  req.session.returnTo = req.originalUrl;
+  res.redirect('/login');
+}
+
+function requireAdmin(req, res, next) {
+  if (req.user && req.user.role === 'admin') return next();
+  if (req.path.startsWith('/api/')) return res.status(403).json({ error: 'Admin only' });
+  res.status(404).render('error', { title: 'Not found', message: 'Page not found.' });
+}
+
+function flash(req, type, text) {
+  req.session.flash = { type, text };
+}
+
+module.exports = { context, csrf, requireLogin, requireAdmin, flash };

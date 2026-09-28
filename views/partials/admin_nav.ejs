@@ -1,0 +1,9 @@
+<nav class="subnav" aria-label="Admin">
+  <a href="/admin" class="<%= path === '/admin' ? 'active' : '' %>">Dashboard</a>
+  <a href="/admin/challenges" class="<%= path.startsWith('/admin/challenges') ? 'active' : '' %>">Challenges</a>
+  <a href="/admin/users" class="<%= path.startsWith('/admin/users') ? 'active' : '' %>">Users</a>
+  <% if (settings.mode === 'teams') { %><a href="/admin/teams" class="<%= path.startsWith('/admin/teams') ? 'active' : '' %>">Teams</a><% } %>
+  <a href="/admin/submissions" class="<%= path.startsWith('/admin/submissions') ? 'active' : '' %>">Submissions</a>
+  <a href="/admin/announcements" class="<%= path.startsWith('/admin/announcements') ? 'active' : '' %>">Announcements</a>
+  <a href="/admin/settings" class="<%= path.startsWith('/admin/settings') ? 'active' : '' %>">Settings</a>
+</nav>

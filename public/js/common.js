@@ -1,0 +1,210 @@
+// Shared behaviour for every page: nav, confirm dialogs, colours, toasts, confetti,
+// event countdown and live notifications. Exposes a small helper API as window.CTF.
+(function () {
+  'use strict';
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- helpers ----------
+  var FIXED_HUES = { web: 205, crypto: 270, pwn: 350, rev: 28, reverse: 28, forensics: 165, osint: 48, misc: 320, stego: 295, network: 185, mobile: 130 };
+
+  function hue(name) {
+    var key = String(name).toLowerCase();
+    if (FIXED_HUES[key] !== undefined) return FIXED_HUES[key];
+    var h = 0;
+    for (var i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) % 360;
+    return h;
+  }
+
+  // Colour category tags, avatars and bars from their names (CSSOM is allowed by the CSP).
+  function paint(root) {
+    root = root || document;
+    Array.prototype.forEach.call(root.querySelectorAll('[data-cat]'), function (el) {
+      el.style.setProperty('--hue', hue(el.getAttribute('data-cat')));
+    });
+    Array.prototype.forEach.call(root.querySelectorAll('[data-name]'), function (el) {
+      el.style.setProperty('--hue', hue(el.getAttribute('data-name')));
+    });
+  }
+
+  function timeAgo(ms) {
+    var s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+    if (s < 45) return 'just now';
+    if (s < 3600) return Math.round(s / 60) + 'm ago';
+    if (s < 86400) return Math.round(s / 3600) + 'h ago';
+    return new Date(ms).toLocaleDateString();
+  }
+
+  function toast(text, kind, ms) {
+    var box = document.getElementById('toasts');
+    if (!box) return;
+    var el = document.createElement('div');
+    el.className = 'toast' + (kind ? ' ' + kind : '');
+    el.textContent = text;
+    box.appendChild(el);
+    while (box.children.length > 4) box.removeChild(box.firstChild);
+    setTimeout(function () {
+      el.classList.add('leaving');
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 350);
+    }, ms || 6000);
+  }
+
+  function confetti() {
+    if (reduceMotion) return;
+    var canvas = document.createElement('canvas');
+    canvas.className = 'confetti';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    document.body.appendChild(canvas);
+    var ctx = canvas.getContext('2d');
+    var colors = ['#00e5a0', '#22d3ee', '#7c5cff', '#fbbf24', '#ff5c72', '#ffffff'];
+    var pieces = [];
+    for (var i = 0; i < 150; i++) {
+      pieces.push({
+        x: canvas.width / 2 + (Math.random() - 0.5) * 240,
+        y: canvas.height * 0.4,
+        vx: (Math.random() - 0.5) * 16,
+        vy: -Math.random() * 15 - 4,
+        size: 5 + Math.random() * 6,
+        rot: Math.random() * 6,
+        vr: (Math.random() - 0.5) * 0.4,
+        color: colors[i % colors.length],
+      });
+    }
+    var start = performance.now();
+    (function tick(now) {
+      var age = now - start;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      pieces.forEach(function (p) {
+        p.vy += 0.35;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vr;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - age / 3200);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      });
+      if (age < 3200) window.requestAnimationFrame(tick);
+      else if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+    })(start);
+  }
+
+  window.CTF = { hue: hue, paint: paint, timeAgo: timeAgo, toast: toast, confetti: confetti };
+
+  // ---------- nav + confirm ----------
+  var toggle = document.querySelector('.nav-toggle');
+  var nav = document.getElementById('main-nav');
+  if (toggle && nav) {
+    toggle.addEventListener('click', function () {
+      var open = nav.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', String(open));
+    });
+  }
+
+  // Forms with data-confirm ask first (inline handlers are blocked by the CSP).
+  document.addEventListener('submit', function (event) {
+    var message = event.target.getAttribute && event.target.getAttribute('data-confirm');
+    if (message && !window.confirm(message)) event.preventDefault();
+  });
+
+  // ---------- colours, bars, counters ----------
+  paint();
+
+  window.requestAnimationFrame(function () {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-w]'), function (el) {
+      el.style.width = Math.min(100, Number(el.getAttribute('data-w')) || 0) + '%';
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-count]'), function (el) {
+    var target = Number(el.getAttribute('data-count')) || 0;
+    if (reduceMotion || target === 0) { el.textContent = String(target); return; }
+    var start = performance.now();
+    (function step(now) {
+      var t = Math.min(1, (now - start) / 900);
+      el.textContent = String(Math.round(target * (1 - Math.pow(1 - t, 3))));
+      if (t < 1) window.requestAnimationFrame(step);
+    })(start);
+  });
+
+  // ---------- event countdown ----------
+  var countdown = document.getElementById('countdown');
+  if (countdown) {
+    var startAt = Number(countdown.getAttribute('data-start')) || null;
+    var endAt = Number(countdown.getAttribute('data-end')) || null;
+    var fmt = function (ms) {
+      var s = Math.max(0, Math.floor(ms / 1000));
+      var d = Math.floor(s / 86400);
+      var hh = String(Math.floor((s % 86400) / 3600)).padStart(2, '0');
+      var mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+      var ss = String(s % 60).padStart(2, '0');
+      return (d ? d + 'd ' : '') + hh + ':' + mm + ':' + ss;
+    };
+    var tick = function () {
+      var now = Date.now();
+      countdown.className = 'countdown';
+      if (startAt && now < startAt) {
+        countdown.textContent = 'Starts in ' + fmt(startAt - now);
+      } else if (endAt && now < endAt) {
+        countdown.textContent = 'Ends in ' + fmt(endAt - now);
+        countdown.classList.add('live');
+      } else if (endAt) {
+        countdown.textContent = 'Event ended';
+        countdown.classList.add('done');
+      } else {
+        countdown.textContent = 'Live now';
+        countdown.classList.add('live');
+      }
+    };
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  // ---------- news badge ----------
+  function safeStorage(kind) {
+    try { return window[kind]; } catch (e) { return null; }
+  }
+  var local = safeStorage('localStorage');
+  var badge = document.getElementById('news-badge');
+  if (badge && local) {
+    fetch('/api/announcements').then(function (r) { return r.ok ? r.json() : []; }).then(function (items) {
+      var seen = Number(local.getItem('ctf.newsSeen')) || 0;
+      var unread = items.filter(function (a) { return a.id > seen; }).length;
+      if (unread > 0 && !document.querySelector('[data-announcement]')) {
+        badge.textContent = String(unread);
+        badge.hidden = false;
+      }
+    }).catch(function () { /* badge is a nicety */ });
+  }
+
+  // ---------- live solve notifications (signed-in players) ----------
+  var session = safeStorage('sessionStorage');
+  if (document.body.getAttribute('data-auth') === '1' && session) {
+    var lastId = session.getItem('ctf.lastSolve');
+    var poll = function () {
+      if (document.hidden) return;
+      var baseline = lastId === null;
+      fetch('/api/activity?since=' + (baseline ? 0 : lastId) + '&limit=' + (baseline ? 1 : 10), { headers: { Accept: 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (items) {
+          if (!items.length) { if (baseline) { lastId = '0'; session.setItem('ctf.lastSolve', lastId); } return; }
+          var newest = items.reduce(function (m, a) { return Math.max(m, a.id); }, 0);
+          if (!baseline) {
+            items.slice(0, 3).reverse().forEach(function (a) {
+              if (a.firstBlood) toast('🩸 ' + a.who + ' got FIRST BLOOD on "' + a.challenge + '"!', 'blood', 8000);
+              else toast('🚩 ' + a.who + ' solved "' + a.challenge + '" (+' + a.value + ')', 'ok');
+            });
+          }
+          lastId = String(newest);
+          session.setItem('ctf.lastSolve', lastId);
+        })
+        .catch(function () { /* transient network error: try again next tick */ });
+    };
+    poll();
+    setInterval(poll, 20000);
+  }
+})();

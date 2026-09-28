@@ -1,0 +1,38 @@
+<%- include('../partials/header') %>
+<%- include('../partials/admin_nav') %>
+<h1>Users</h1>
+<form method="get" action="/admin/users" class="form inline-form">
+  <input type="search" name="q" value="<%= q %>" placeholder="Search username or email">
+  <button type="submit" class="btn btn-small">Search</button>
+</form>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>ID</th><th>User</th><th>Email</th><% if (settings.mode === 'teams') { %><th>Team</th><% } %><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+      <% users.forEach(function (u) { %>
+        <tr>
+          <td><%= u.id %></td>
+          <td><a href="/users/<%= u.id %>"><%= u.username %></a></td>
+          <td><%= u.email %></td>
+          <% if (settings.mode === 'teams') { %><td><%= u.team_name || '' %></td><% } %>
+          <td><%= u.role %></td>
+          <td><%= u.banned ? 'banned' : '' %> <%= u.hidden ? 'hidden' : '' %></td>
+          <td class="actions-cell">
+            <% [[u.banned ? 'unban' : 'ban', u.banned ? 'Unban' : 'Ban', 'btn-danger'], [u.hidden ? 'unhide' : 'hide', u.hidden ? 'Unhide' : 'Hide', 'btn-ghost'], [u.role === 'admin' ? 'demote' : 'promote', u.role === 'admin' ? 'Demote' : 'Make admin', 'btn-ghost'], ['delete', 'Delete', 'btn-danger']].forEach(function (a) { %>
+              <form method="post" action="/admin/users/<%= u.id %>/<%= a[0] %>" class="inline" <% if (a[0] === 'delete' || a[0] === 'ban') { %>data-confirm="<%= a[1] %> <%= u.username %>?"<% } %>>
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-small <%= a[2] %>"><%= a[1] %></button>
+              </form>
+            <% }); %>
+            <form method="post" action="/admin/users/<%= u.id %>/password" class="inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="password" name="password" placeholder="New password" minlength="8" maxlength="72" class="mini" aria-label="New password for <%= u.username %>" required>
+              <button type="submit" class="btn btn-small btn-ghost">Reset</button>
+            </form>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/footer') %>

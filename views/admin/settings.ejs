@@ -1,0 +1,29 @@
+<%- include('../partials/header') %>
+<%- include('../partials/admin_nav') %>
+<h1>Settings</h1>
+<% errors.forEach(function (e) { %><div class="flash flash-error" role="alert"><%= e %></div><% }); %>
+<form method="post" action="/admin/settings" class="form card" id="settings-form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <label>CTF name <input type="text" name="ctf_name" value="<%= settings.ctf_name %>" required maxlength="60"></label>
+  <label>Mode
+    <select name="mode">
+      <option value="users" <%= settings.mode === 'users' ? 'selected' : '' %>>Individual players</option>
+      <option value="teams" <%= settings.mode === 'teams' ? 'selected' : '' %>>Teams</option>
+    </select>
+  </label>
+  <label>Max team size <input type="number" name="team_size" value="<%= settings.team_size %>" min="1" max="100"></label>
+  <div class="grid-2">
+    <label>Start time (your local time; blank = already started)
+      <input type="datetime-local" data-epoch-input="start_time" data-epoch="<%= settings.start_time %>">
+      <input type="hidden" name="start_time" value="<%= settings.start_time %>">
+    </label>
+    <label>End time (your local time; blank = never)
+      <input type="datetime-local" data-epoch-input="end_time" data-epoch="<%= settings.end_time %>">
+      <input type="hidden" name="end_time" value="<%= settings.end_time %>">
+    </label>
+  </div>
+  <label class="check"><input type="checkbox" name="registration_open" value="1" <%= settings.registration_open === '1' ? 'checked' : '' %>> Registration open</label>
+  <label class="check"><input type="checkbox" name="scoreboard_public" value="1" <%= settings.scoreboard_public === '1' ? 'checked' : '' %>> Scoreboard visible to logged-out visitors</label>
+  <button type="submit" class="btn">Save settings</button>
+</form>
+<%- include('../partials/footer', { scripts: ['admin'] }) %>

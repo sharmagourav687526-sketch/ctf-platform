@@ -1,0 +1,41 @@
+<%- include('partials/header') %>
+<section class="narrow">
+  <h1>My team</h1>
+  <% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
+
+  <% if (team) { %>
+    <div class="card">
+      <h2><a href="/teams/<%= team.id %>"><%= team.name %></a></h2>
+      <p class="muted">Invite code (share it privately with your teammates):</p>
+      <p><code class="invite"><%= team.invite_code %></code></p>
+      <h3>Members (<%= members.length %>/<%= settings.team_size %>)</h3>
+      <ul class="plain">
+        <% members.forEach(function (m) { %>
+          <li><a href="/users/<%= m.id %>"><%= m.username %></a><%= m.id === team.captain_id ? ' (captain)' : '' %></li>
+        <% }); %>
+      </ul>
+      <form method="post" action="/team/leave" class="form" data-confirm="Leave this team? Your team's solves stay with the team, not with you.">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="btn btn-danger">Leave team</button>
+      </form>
+    </div>
+  <% } else { %>
+    <div class="card">
+      <h2>Create a team</h2>
+      <form method="post" action="/team/create" class="form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label>Team name <input type="text" name="name" required minlength="3" maxlength="32"></label>
+        <button type="submit" class="btn">Create</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Join a team</h2>
+      <form method="post" action="/team/join" class="form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label>Invite code <input type="text" name="code" required maxlength="64"></label>
+        <button type="submit" class="btn">Join</button>
+      </form>
+    </div>
+  <% } %>
+</section>
+<%- include('partials/footer') %>

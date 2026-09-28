@@ -1,0 +1,58 @@
+<%- include('partials/header') %>
+<% if (notStarted) { %>
+  <section class="narrow center">
+    <h1>Challenges</h1>
+    <p class="muted">The CTF hasn't started yet. Come back at <%= fmtDate(event.start) %>.</p>
+  </section>
+<% } else { %>
+  <div class="row-between page-head">
+    <h1>Challenges</h1>
+    <% if (user.role === 'admin') { %><a class="btn btn-small btn-ghost" href="/admin/challenges/new">+ New challenge</a><% } %>
+  </div>
+  <% if (settings.mode === 'teams' && !user.team_id) { %>
+    <div class="flash flash-info">You are not on a team yet. <a href="/team">Create or join one</a> to submit flags.</div>
+  <% } %>
+
+  <section class="progress-card card" aria-label="Your progress">
+    <div class="row-between">
+      <span id="progress-text" class="progress-text">Loading&hellip;</span>
+      <span id="points-text" class="muted small"></span>
+    </div>
+    <div class="bar"><div class="bar-fill" id="progress-bar"></div></div>
+  </section>
+
+  <div class="board-tools">
+    <input type="search" id="search" placeholder="Search challenges by name or category&hellip;" aria-label="Search challenges" autocomplete="off">
+    <div id="filters" class="filters"></div>
+  </div>
+  <div id="board" aria-live="polite"><p class="muted">Loading challenges&hellip;</p></div>
+
+  <div id="modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-box">
+      <button type="button" class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+      <div class="modal-head">
+        <span class="tag" id="modal-meta"></span>
+        <span class="points" id="modal-points"></span>
+      </div>
+      <h2 id="modal-title"></h2>
+      <div class="md" id="modal-desc"></div>
+      <div id="modal-conn-wrap" class="conn-wrap" hidden>
+        <code id="modal-conn" class="conn"></code>
+        <button type="button" class="btn btn-small btn-ghost" id="copy-conn">Copy</button>
+      </div>
+      <ul id="modal-files" class="files"></ul>
+      <div id="modal-hints"></div>
+      <form id="flag-form" class="flag-form" autocomplete="off">
+        <input type="text" id="flag-input" placeholder="flag{...}" maxlength="500" required spellcheck="false">
+        <button type="submit" class="btn">Submit flag</button>
+      </form>
+      <p id="flag-result" class="result" role="status"></p>
+      <p class="muted small" id="modal-attempts"></p>
+      <div id="modal-solvers-wrap" hidden>
+        <h3 class="solvers-title">Solved by</h3>
+        <ol id="modal-solvers" class="solvers"></ol>
+      </div>
+    </div>
+  </div>
+<% } %>
+<%- include('partials/footer', { scripts: notStarted ? [] : ['challenges'] }) %>

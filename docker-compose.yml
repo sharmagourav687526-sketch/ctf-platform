@@ -1,0 +1,15 @@
+services:
+  ctf:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Required: generate one with `openssl rand -hex 32` and put it in .env
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      # Set to 1 when running behind an HTTPS reverse proxy (nginx, Caddy, Traefik).
+      TRUST_PROXY: ${TRUST_PROXY:-}
+    volumes:
+      - ./data:/app/data

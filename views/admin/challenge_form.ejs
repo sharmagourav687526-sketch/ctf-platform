@@ -1,0 +1,151 @@
+<%- include('../partials/header') %>
+<%- include('../partials/admin_nav') %>
+<% const c = challenge || { name: '', category: '', description: '', connection_info: '', points: 100, min_points: 100, decay: 0, max_attempts: 0, visible: 1, requires_id: null }; %>
+<% const isEdit = !!(challenge && challenge.id); %>
+<div class="row-between">
+  <h1><%= isEdit ? 'Edit challenge' : 'New challenge' %></h1>
+  <% if (isEdit) { %><a class="btn btn-small btn-ghost" href="#files">Jump to files &darr;</a><% } %>
+</div>
+<% errors.forEach(function (e) { %><div class="flash flash-error" role="alert"><%= e %></div><% }); %>
+
+<%# Creating uses a multipart form so files can be attached in one step; the CSRF token rides in the query string. %>
+<form method="post"
+      action="<%= isEdit ? '/admin/challenges/' + challenge.id : '/admin/challenges?_csrf=' + csrfToken %>"
+      <% if (!isEdit) { %>enctype="multipart/form-data"<% } %>
+      class="form card" id="challenge-form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="grid-2">
+    <label>Name <input type="text" name="name" value="<%= c.name %>" required maxlength="100" placeholder="e.g. Broken Login"></label>
+    <label>Category
+      <input type="text" name="category" value="<%= c.category %>" required maxlength="50" list="category-list" placeholder="web, crypto, pwn, rev, forensics, osint, misc">
+      <datalist id="category-list"><option value="web"><option value="crypto"><option value="pwn"><option value="rev"><option value="forensics"><option value="osint"><option value="misc"></datalist>
+    </label>
+  </div>
+
+  <div class="editor-split">
+    <label>Description (Markdown: **bold**, `code`, ``` code blocks ```, [links](https://...))
+      <textarea name="description" id="description" rows="10" maxlength="20000" data-preview-url="/admin/api/preview" data-preview-target="preview"><%= c.description %></textarea>
+    </label>
+    <div>
+      <span class="label-text">Live preview (what players will see)</span>
+      <div class="md preview" id="preview" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <label>Connection info (e.g. nc host 1337, or a URL)
+    <input type="text" name="connection_info" value="<%= c.connection_info %>" maxlength="500">
+  </label>
+  <div class="grid-4">
+    <label>Points <input type="number" name="points" value="<%= c.points %>" min="0" max="100000"></label>
+    <label>Minimum points <input type="number" name="min_points" value="<%= c.min_points %>" min="0" max="100000"></label>
+    <label>Decay (solves to reach minimum; 0 = static) <input type="number" name="decay" value="<%= c.decay %>" min="0" max="100000"></label>
+    <label>Max attempts (0 = unlimited) <input type="number" name="max_attempts" value="<%= c.max_attempts %>" min="0" max="1000"></label>
+  </div>
+  <label>Unlocked after solving
+    <select name="requires_id">
+      <option value="">(nothing &ndash; always available)</option>
+      <% others.forEach(function (o) { %><option value="<%= o.id %>" <%= Number(c.requires_id) === o.id ? 'selected' : '' %>><%= o.name %></option><% }); %>
+    </select>
+  </label>
+  <label class="check"><input type="checkbox" name="visible" value="1" <%= c.visible ? 'checked' : '' %>> Visible to players</label>
+
+  <% if (!isEdit) { %>
+    <h2>First flag</h2>
+    <div class="grid-2">
+      <label>Flag <input type="text" name="flag" required maxlength="500" placeholder="flag{...}" spellcheck="false"></label>
+      <label>Type
+        <select name="flag_type"><option value="static">Static (exact match)</option><option value="regex">Regex (full match)</option></select>
+      </label>
+    </div>
+    <label class="check"><input type="checkbox" name="case_insensitive" value="1"> Case insensitive</label>
+
+    <h2>Attachments <span class="muted small">(optional)</span></h2>
+    <label class="dropzone" id="dropzone" for="file-input">
+      <input type="file" name="files" id="file-input" class="sr-input" multiple>
+      <span class="dropzone-icon" aria-hidden="true">&#8682;</span>
+      <strong>Drop files here or click to browse</strong>
+      <span class="muted small">Up to 10 files, 50 MB each. Players download them from the challenge.</span>
+      <ul class="dropzone-list" id="file-list"></ul>
+    </label>
+
+    <h2>First hint <span class="muted small">(optional)</span></h2>
+    <div class="grid-2">
+      <label>Hint text <input type="text" name="hint" maxlength="2000" placeholder="Players can unlock this for points"></label>
+      <label>Hint cost (points) <input type="number" name="hint_cost" value="0" min="0" max="100000"></label>
+    </div>
+  <% } %>
+  <button type="submit" class="btn btn-lg"><%= isEdit ? 'Save changes' : 'Create challenge' %></button>
+</form>
+
+<% if (isEdit) { %>
+<section class="card">
+  <h2>Flags</h2>
+  <ul class="plain">
+    <% flags.forEach(function (f) { %>
+      <li class="row-between">
+        <span><code><%= f.content %></code> <span class="tag"><%= f.type %></span><%= f.case_sensitive ? '' : ' (case-insensitive)' %></span>
+        <form method="post" action="/admin/challenges/<%= challenge.id %>/flags/<%= f.id %>/delete" class="inline">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="btn btn-small btn-danger">Remove</button>
+        </form>
+      </li>
+    <% }); %>
+  </ul>
+  <form method="post" action="/admin/challenges/<%= challenge.id %>/flags" class="form inline-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="text" name="content" placeholder="Additional flag" required maxlength="500">
+    <select name="type"><option value="static">Static</option><option value="regex">Regex</option></select>
+    <label class="check"><input type="checkbox" name="case_insensitive" value="1"> Case-insensitive</label>
+    <button type="submit" class="btn btn-small">Add flag</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Hints</h2>
+  <ul class="plain">
+    <% hints.forEach(function (h) { %>
+      <li class="row-between">
+        <span><%= h.content %> <span class="tag">cost <%= h.cost %></span></span>
+        <form method="post" action="/admin/challenges/<%= challenge.id %>/hints/<%= h.id %>/delete" class="inline">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="btn btn-small btn-danger">Remove</button>
+        </form>
+      </li>
+    <% }); %>
+    <% if (!hints.length) { %><li class="muted">No hints.</li><% } %>
+  </ul>
+  <form method="post" action="/admin/challenges/<%= challenge.id %>/hints" class="form inline-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="text" name="content" placeholder="Hint text" required maxlength="2000">
+    <input type="number" name="cost" value="0" min="0" aria-label="Point cost">
+    <button type="submit" class="btn btn-small">Add hint</button>
+  </form>
+</section>
+
+<section class="card" id="files">
+  <h2>Files</h2>
+  <ul class="plain">
+    <% files.forEach(function (f) { %>
+      <li class="row-between">
+        <span><a href="/files/<%= f.id %>"><%= f.filename %></a> <span class="muted small">(<%= Math.ceil(f.size / 1024) %> KB)</span></span>
+        <form method="post" action="/admin/challenges/<%= challenge.id %>/files/<%= f.id %>/delete" class="inline">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="btn btn-small btn-danger">Remove</button>
+        </form>
+      </li>
+    <% }); %>
+    <% if (!files.length) { %><li class="muted">No files attached yet.</li><% } %>
+  </ul>
+  <form method="post" action="/admin/challenges/<%= challenge.id %>/files?_csrf=<%= csrfToken %>" enctype="multipart/form-data" class="form">
+    <label class="dropzone" id="dropzone" for="file-input">
+      <input type="file" name="files" id="file-input" class="sr-input" multiple required>
+      <span class="dropzone-icon" aria-hidden="true">&#8682;</span>
+      <strong>Drop files here or click to browse</strong>
+      <span class="muted small">Up to 10 files, 50 MB each.</span>
+      <ul class="dropzone-list" id="file-list"></ul>
+    </label>
+    <button type="submit" class="btn">Upload files</button>
+  </form>
+</section>
+<% } %>
+<%- include('../partials/footer', { scripts: ['admin'] }) %>

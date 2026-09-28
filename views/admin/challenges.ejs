@@ -1,0 +1,32 @@
+<%- include('../partials/header') %>
+<%- include('../partials/admin_nav') %>
+<div class="row-between">
+  <h1>Challenges</h1>
+  <a class="btn" href="/admin/challenges/new">New challenge</a>
+</div>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>ID</th><th>Name</th><th>Category</th><th class="num">Value</th><th class="num">Solves</th><th>Visible</th><th></th></tr></thead>
+    <tbody>
+      <% challenges.forEach(function (c) { %>
+        <tr>
+          <td><%= c.id %></td>
+          <td><a href="/admin/challenges/<%= c.id %>/edit"><%= c.name %></a></td>
+          <td><span class="tag"><%= c.category %></span></td>
+          <td class="num"><%= c.value %><%= c.decay > 0 ? ' (dynamic)' : '' %></td>
+          <td class="num"><%= c.solves %></td>
+          <td><%= c.visible ? 'yes' : 'hidden' %></td>
+          <td class="actions-cell">
+            <a class="btn btn-small btn-ghost" href="/admin/challenges/<%= c.id %>/edit">Edit</a>
+            <form method="post" action="/admin/challenges/<%= c.id %>/delete" class="inline" data-confirm="Delete '<%= c.name %>' and all of its solves and submissions?">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" class="btn btn-small btn-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+      <% }); %>
+      <% if (!challenges.length) { %><tr><td colspan="7" class="muted">No challenges yet. Create your first one.</td></tr><% } %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/footer') %>
