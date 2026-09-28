@@ -7,3 +7,8 @@
   <a href="/admin/announcements" class="<%= path.startsWith('/admin/announcements') ? 'active' : '' %>">Announcements</a>
   <a href="/admin/settings" class="<%= path.startsWith('/admin/settings') ? 'active' : '' %>">Settings</a>
 </nav>
+<% if (user && user.role === 'monitor') { %>
+  <p class="muted small" style="margin:.5rem 0 0;padding:.4rem .75rem;background:rgba(167,139,250,.12);border-left:3px solid #a78bfa;border-radius:4px">
+    Monitor mode — read-only view. Contact an admin to make changes.
+  </p>
+<% } %>

@@ -6,7 +6,7 @@ const express = require('express');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const { setSetting } = require('../db');
-const { requireLogin, requireAdmin, flash } = require('../middleware');
+const { requireLogin, requireAdmin, requireStaff, monitorReadOnly, flash } = require('../middleware');
 const { computeScoreboard, challengeValue, solveCounts } = require('../scoring');
 const { toCsv, randomHex, parseEpoch, renderMarkdown } = require('../utils');
 const { validatePassword } = require('./auth');
@@ -22,7 +22,7 @@ function int(v, min, max, fallback) {
 
 module.exports = function adminRoutes(db, config) {
   const router = express.Router();
-  router.use(requireLogin, requireAdmin);
+  router.use(requireLogin, requireStaff, monitorReadOnly);
 
   fs.mkdirSync(config.uploadDir, { recursive: true });
   const upload = multer({
@@ -267,6 +267,8 @@ module.exports = function adminRoutes(db, config) {
       case 'unhide': set('hidden', 0); break;
       case 'promote': set('role', 'admin'); break;
       case 'demote': set('role', 'user'); break;
+      case 'make_monitor': set('role', 'monitor'); break;
+      case 'make_user': set('role', 'user'); break;
       case 'delete': db.prepare('DELETE FROM users WHERE id = ?').run(id); break;
       case 'password': {
         const pwError = validatePassword(req.body.password);

@@ -54,8 +54,23 @@ function requireAdmin(req, res, next) {
   res.status(404).render('error', { title: 'Not found', message: 'Page not found.' });
 }
 
+/** Admin or monitor — allows read-only staff access to the admin panel. */
+function requireStaff(req, res, next) {
+  if (req.user && (req.user.role === 'admin' || req.user.role === 'monitor')) return next();
+  if (req.path.startsWith('/api/')) return res.status(403).json({ error: 'Staff only' });
+  res.status(404).render('error', { title: 'Not found', message: 'Page not found.' });
+}
+
+/** Block monitors from any state-changing request. */
+function monitorReadOnly(req, res, next) {
+  if (req.user && req.user.role === 'monitor' && req.method !== 'GET' && req.method !== 'HEAD') {
+    return res.status(403).render('error', { title: 'Forbidden', message: 'Monitors have read-only access. Ask an admin to make changes.' });
+  }
+  next();
+}
+
 function flash(req, type, text) {
   req.session.flash = { type, text };
 }
 
-module.exports = { context, csrf, requireLogin, requireAdmin, flash };
+module.exports = { context, csrf, requireLogin, requireAdmin, requireStaff, monitorReadOnly, flash };

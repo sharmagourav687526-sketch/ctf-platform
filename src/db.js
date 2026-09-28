@@ -4,13 +4,26 @@ const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 
+const USERS_TABLE = `CREATE TABLE users (
+  id            INTEGER PRIMARY KEY,
+  username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash TEXT NOT NULL,
+  role          TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin','monitor')),
+  team_id       INTEGER REFERENCES teams(id) ON DELETE SET NULL,
+  country       TEXT,
+  hidden        INTEGER NOT NULL DEFAULT 0,
+  banned        INTEGER NOT NULL DEFAULT 0,
+  created_at    INTEGER NOT NULL
+)`;
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
   id            INTEGER PRIMARY KEY,
   username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
   email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
   password_hash TEXT NOT NULL,
-  role          TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),
+  role          TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin','monitor')),
   team_id       INTEGER REFERENCES teams(id) ON DELETE SET NULL,
   country       TEXT,
   hidden        INTEGER NOT NULL DEFAULT 0,
@@ -143,6 +156,22 @@ function openDb(file) {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.exec(SCHEMA);
+
+  // Migration: widen role CHECK constraint to include 'monitor'.
+  // legacy_alter_table=ON prevents SQLite from rewriting FK references in other
+  // tables when we rename users → _users_old, so those tables keep pointing at
+  // the new "users" table after we recreate it.
+  const usersRow = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get();
+  if (usersRow && !usersRow.sql.includes("'monitor'")) {
+    db.pragma('foreign_keys = OFF');
+    db.pragma('legacy_alter_table = ON');
+    db.exec('ALTER TABLE users RENAME TO _users_old');
+    db.exec(USERS_TABLE.replace('CREATE TABLE users', 'CREATE TABLE IF NOT EXISTS users'));
+    db.exec('INSERT INTO users SELECT * FROM _users_old');
+    db.exec('DROP TABLE _users_old');
+    db.pragma('legacy_alter_table = OFF');
+    db.pragma('foreign_keys = ON');
+  }
   const seed = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) seed.run(k, v);
   return db;

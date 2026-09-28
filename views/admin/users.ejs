@@ -15,20 +15,59 @@
           <td><a href="/users/<%= u.id %>"><%= u.username %></a></td>
           <td><%= u.email %></td>
           <% if (settings.mode === 'teams') { %><td><%= u.team_name || '' %></td><% } %>
-          <td><%= u.role %></td>
+          <td>
+            <% if (u.role === 'admin') { %><span class="tag tag-ok">admin</span>
+            <% } else if (u.role === 'monitor') { %><span class="tag" style="background:var(--accent,#a78bfa);color:#000">monitor</span>
+            <% } else { %><span class="tag tag-neutral">user</span><% } %>
+          </td>
           <td><%= u.banned ? 'banned' : '' %> <%= u.hidden ? 'hidden' : '' %></td>
           <td class="actions-cell">
-            <% [[u.banned ? 'unban' : 'ban', u.banned ? 'Unban' : 'Ban', 'btn-danger'], [u.hidden ? 'unhide' : 'hide', u.hidden ? 'Unhide' : 'Hide', 'btn-ghost'], [u.role === 'admin' ? 'demote' : 'promote', u.role === 'admin' ? 'Demote' : 'Make admin', 'btn-ghost'], ['delete', 'Delete', 'btn-danger']].forEach(function (a) { %>
-              <form method="post" action="/admin/users/<%= u.id %>/<%= a[0] %>" class="inline" <% if (a[0] === 'delete' || a[0] === 'ban') { %>data-confirm="<%= a[1] %> <%= u.username %>?"<% } %>>
+            <% if (user.role === 'admin') { %>
+              <%/* ban/unban */%>
+              <form method="post" action="/admin/users/<%= u.id %>/<%= u.banned ? 'unban' : 'ban' %>" class="inline" <% if (!u.banned) { %>data-confirm="Ban <%= u.username %>?"<% } %>>
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button type="submit" class="btn btn-small <%= a[2] %>"><%= a[1] %></button>
+                <button type="submit" class="btn btn-small btn-danger"><%= u.banned ? 'Unban' : 'Ban' %></button>
               </form>
-            <% }); %>
-            <form method="post" action="/admin/users/<%= u.id %>/password" class="inline">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <input type="password" name="password" placeholder="New password" minlength="8" maxlength="72" class="mini" aria-label="New password for <%= u.username %>" required>
-              <button type="submit" class="btn btn-small btn-ghost">Reset</button>
-            </form>
+              <%/* hide/unhide */%>
+              <form method="post" action="/admin/users/<%= u.id %>/<%= u.hidden ? 'unhide' : 'hide' %>" class="inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-small btn-ghost"><%= u.hidden ? 'Unhide' : 'Hide' %></button>
+              </form>
+              <%/* role assignment */%>
+              <% if (u.role !== 'admin') { %>
+                <form method="post" action="/admin/users/<%= u.id %>/promote" class="inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="btn btn-small btn-ghost">Make admin</button>
+                </form>
+              <% } %>
+              <% if (u.role !== 'monitor') { %>
+                <form method="post" action="/admin/users/<%= u.id %>/make_monitor" class="inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="btn btn-small btn-ghost">Make monitor</button>
+                </form>
+              <% } %>
+              <% if (u.role !== 'user') { %>
+                <form method="post" action="/admin/users/<%= u.id %>/make_user" class="inline" <% if (u.id === user.id) { %>data-confirm="Demote yourself to user?"<% } %>>
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="btn btn-small btn-ghost">Make user</button>
+                </form>
+              <% } %>
+              <%/* delete */%>
+              <% if (u.id !== user.id) { %>
+                <form method="post" action="/admin/users/<%= u.id %>/delete" class="inline" data-confirm="Delete <%= u.username %>?">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="btn btn-small btn-danger">Delete</button>
+                </form>
+              <% } %>
+              <%/* password reset */%>
+              <form method="post" action="/admin/users/<%= u.id %>/password" class="inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <input type="password" name="password" placeholder="New password" minlength="8" maxlength="72" class="mini" aria-label="New password for <%= u.username %>" required>
+                <button type="submit" class="btn btn-small btn-ghost">Reset pw</button>
+              </form>
+            <% } else { %>
+              <span class="muted small">read-only</span>
+            <% } %>
           </td>
         </tr>
       <% }); %>
