@@ -7,13 +7,14 @@ const TTL = 30_000;
 
 let _cache = null;
 let _ts = 0;
-let _mode = '';
+let _key = '';
 
-function get(db, mode, computeFn) {
-  if (_cache && mode === _mode && Date.now() - _ts < TTL) return _cache;
-  _cache = computeFn(db, mode);
+function get(db, mode, computeFn, cutoff = null) {
+  const key = `${mode}:${cutoff || 0}`;
+  if (_cache && key === _key && Date.now() - _ts < TTL) return _cache;
+  _cache = computeFn(db, mode, cutoff);
   _ts = Date.now();
-  _mode = mode;
+  _key = key;
   return _cache;
 }
 

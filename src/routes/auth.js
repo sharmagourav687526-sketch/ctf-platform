@@ -122,6 +122,9 @@ module.exports = function authRoutes(db) {
     const pwError = validatePassword(password);
     if (pwError) return fail(pwError);
     if (password !== req.body.confirm) return fail('Passwords do not match.');
+    if (req.settings.invite_code && String(req.body.invite_code || '').trim() !== req.settings.invite_code) {
+      return fail('Invalid invite code.');
+    }
     if (db.prepare('SELECT 1 FROM users WHERE username = ? OR email = ?').get(form.username, form.email)) {
       return fail('That username or email is already registered.');
     }

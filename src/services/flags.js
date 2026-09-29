@@ -9,14 +9,32 @@ function digest(s) {
 }
 
 /**
- * Check a submission against a challenge's flags. Static flags are compared through
- * fixed-length digests with timingSafeEqual so response time doesn't leak prefix matches.
+ * Generate the per-user dynamic flag for a challenge.
+ * Format: {content}{hex(HMAC-SHA256(secret, "userId:challengeId")[:16])}
+ * content is the prefix stored in the flags row (e.g. "CTF{").
  */
-function checkFlag(flags, submitted) {
+function generateDynamicFlag(secret, prefix, userId, challengeId) {
+  const hmac = crypto.createHmac('sha256', secret)
+    .update(`${userId}:${challengeId}`)
+    .digest('hex')
+    .slice(0, 32);
+  const pfx = (prefix || 'CTF{').replace(/\}$/, '');
+  return `${pfx}${hmac}}`;
+}
+
+/**
+ * Check a submission against a challenge's flags.
+ * opts: { dynamicFlagSecret, userId, challengeId } — required only when a dynamic flag exists.
+ */
+function checkFlag(flags, submitted, opts = {}) {
   if (typeof submitted !== 'string' || submitted.length === 0 || submitted.length > MAX_FLAG_LENGTH) return false;
   const value = submitted.trim();
   for (const flag of flags) {
-    if (flag.type === 'regex') {
+    if (flag.type === 'dynamic') {
+      if (!opts.dynamicFlagSecret) continue;
+      const expected = generateDynamicFlag(opts.dynamicFlagSecret, flag.content, opts.userId, opts.challengeId);
+      if (crypto.timingSafeEqual(digest(value), digest(expected))) return true;
+    } else if (flag.type === 'regex') {
       try {
         if (new RegExp(`^(?:${flag.content})$`, flag.case_sensitive ? '' : 'i').test(value)) return true;
       } catch {
@@ -31,4 +49,4 @@ function checkFlag(flags, submitted) {
   return false;
 }
 
-module.exports = { checkFlag, MAX_FLAG_LENGTH };
+module.exports = { checkFlag, generateDynamicFlag, MAX_FLAG_LENGTH };

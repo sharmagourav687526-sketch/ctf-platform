@@ -26,6 +26,8 @@ services:
       # Login lockout
       LOGIN_MAX_FAILS: ${LOGIN_MAX_FAILS:-10}
       LOGIN_LOCKOUT_MINUTES: ${LOGIN_LOCKOUT_MINUTES:-15}
+      # Dynamic flags (required when using dynamic flag type)
+      DYNAMIC_FLAG_SECRET: ${DYNAMIC_FLAG_SECRET:-}
       # S3 storage (leave S3_BUCKET blank to use local disk)
       S3_BUCKET: ${S3_BUCKET:-}
       S3_REGION: ${S3_REGION:-us-east-1}

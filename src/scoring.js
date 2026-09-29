@@ -30,9 +30,10 @@ function solveCounts(db) {
 
 /**
  * Compute the ranked scoreboard plus per-owner solve timelines (for the graph).
+ * cutoff: epoch-ms; when set, only solves/awards/unlocks up to that time are counted (scoreboard freeze).
  * @returns {{ standings: Array, timelines: Map<string, Array<[number, number]>> }}
  */
-function computeScoreboard(db, mode) {
+function computeScoreboard(db, mode, cutoff = null) {
   const teamMode = mode === 'teams';
   const challenges = new Map(db.prepare('SELECT * FROM challenges').all().map((c) => [c.id, c]));
   const counts = solveCounts(db);
@@ -52,6 +53,7 @@ function computeScoreboard(db, mode) {
 
   const solveRows = db.prepare('SELECT challenge_id, user_id, team_id, created_at FROM solves ORDER BY created_at, id').all();
   for (const s of solveRows) {
+    if (cutoff && s.created_at > cutoff) continue;
     const ch = challenges.get(s.challenge_id);
     if (!ch) continue;
     const o = owners.get(teamMode ? key('team', s.team_id) : key('user', s.user_id));
@@ -64,6 +66,7 @@ function computeScoreboard(db, mode) {
   }
 
   for (const a of db.prepare('SELECT user_id, team_id, value, created_at FROM awards').all()) {
+    if (cutoff && a.created_at > cutoff) continue;
     const o = owners.get(teamMode ? key('team', a.team_id) : key('user', a.user_id));
     if (!o) continue;
     o.score += a.value;
@@ -71,6 +74,7 @@ function computeScoreboard(db, mode) {
   }
 
   for (const h of db.prepare('SELECT user_id, team_id, cost, created_at FROM hint_unlocks').all()) {
+    if (cutoff && h.created_at > cutoff) continue;
     const o = owners.get(teamMode ? key('team', h.team_id) : key('user', h.user_id));
     if (!o) continue;
     o.score -= h.cost;

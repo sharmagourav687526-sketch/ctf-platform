@@ -22,8 +22,15 @@
       <input type="hidden" name="end_time" value="<%= settings.end_time %>">
     </label>
   </div>
+  <label>Scoreboard freeze time <span class="muted small">(public board stops updating at this point; blank = no freeze)</span>
+    <input type="datetime-local" data-epoch-input="freeze_time" data-epoch="<%= settings.freeze_time %>">
+    <input type="hidden" name="freeze_time" value="<%= settings.freeze_time %>">
+  </label>
   <label class="check"><input type="checkbox" name="registration_open" value="1" <%= settings.registration_open === '1' ? 'checked' : '' %>> Registration open</label>
   <label class="check"><input type="checkbox" name="scoreboard_public" value="1" <%= settings.scoreboard_public === '1' ? 'checked' : '' %>> Scoreboard visible to logged-out visitors</label>
+  <label>Registration invite code <span class="muted small">(blank = no code required)</span>
+    <input type="text" name="invite_code" value="<%= settings.invite_code %>" maxlength="64" placeholder="Leave blank to allow open registration" autocomplete="off" spellcheck="false">
+  </label>
   <button type="submit" class="btn">Save settings</button>
 </form>
 <%- include('../partials/footer', { scripts: ['admin'] }) %>

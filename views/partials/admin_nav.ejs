@@ -6,7 +6,9 @@
   <a href="/admin/submissions" class="<%= path.startsWith('/admin/submissions') ? 'active' : '' %>">Submissions</a>
   <a href="/admin/announcements" class="<%= path.startsWith('/admin/announcements') ? 'active' : '' %>">Announcements</a>
   <a href="/admin/settings" class="<%= path.startsWith('/admin/settings') ? 'active' : '' %>">Settings</a>
-  <% if (user && user.role === 'admin') { %><a href="/admin/audit" class="<%= path.startsWith('/admin/audit') ? 'active' : '' %>">Audit log</a><% } %>
+  <% if (user && user.role === 'admin') { %><a href="/admin/audit" class="<%= path.startsWith('/admin/audit') ? 'active' : '' %>">Audit log</a>
+  <a href="/admin/export/challenges.json" style="font-size:.85em">Export JSON</a>
+  <a href="/admin/challenges/import" class="<%= path.startsWith('/admin/challenges/import') ? 'active' : '' %>" style="font-size:.85em">Import</a><% } %>
 </nav>
 <% if (user && user.role === 'monitor') { %>
   <p class="muted small" style="margin:.5rem 0 0;padding:.4rem .75rem;background:rgba(167,139,250,.12);border-left:3px solid #a78bfa;border-radius:4px">

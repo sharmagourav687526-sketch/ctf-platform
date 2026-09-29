@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS flags (
   id             INTEGER PRIMARY KEY,
   challenge_id   INTEGER NOT NULL REFERENCES challenges(id) ON DELETE CASCADE,
   content        TEXT NOT NULL,
-  type           TEXT NOT NULL DEFAULT 'static' CHECK (type IN ('static','regex')),
+  type           TEXT NOT NULL DEFAULT 'static' CHECK (type IN ('static','regex','dynamic')),
   case_sensitive INTEGER NOT NULL DEFAULT 1
 );
 
@@ -163,6 +163,15 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at);
+
+CREATE TABLE IF NOT EXISTS writeups (
+  id           INTEGER PRIMARY KEY,
+  challenge_id INTEGER NOT NULL REFERENCES challenges(id) ON DELETE CASCADE,
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  url          TEXT NOT NULL,
+  created_at   INTEGER NOT NULL,
+  UNIQUE(challenge_id, user_id)
+);
 `;
 
 const DEFAULT_SETTINGS = {
@@ -173,6 +182,8 @@ const DEFAULT_SETTINGS = {
   team_size: '4',
   start_time: '',             // epoch ms; empty = already started
   end_time: '',               // epoch ms; empty = never ends
+  freeze_time: '',            // epoch ms; if set, public scoreboard freezes at this point
+  invite_code: '',            // if non-empty, required at registration
 };
 
 function openDb(file) {
@@ -207,6 +218,31 @@ function openDb(file) {
   }
   if (!userCols.includes('totp_enabled')) {
     db.exec('ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0');
+  }
+
+  // Migration: add 'dynamic' to flags type CHECK constraint.
+  const flagsRow = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='flags'").get();
+  if (flagsRow && !flagsRow.sql.includes("'dynamic'")) {
+    db.pragma('foreign_keys = OFF');
+    db.exec(`
+      CREATE TABLE _flags_new (
+        id             INTEGER PRIMARY KEY,
+        challenge_id   INTEGER NOT NULL REFERENCES challenges(id) ON DELETE CASCADE,
+        content        TEXT NOT NULL,
+        type           TEXT NOT NULL DEFAULT 'static' CHECK (type IN ('static','regex','dynamic')),
+        case_sensitive INTEGER NOT NULL DEFAULT 1
+      );
+      INSERT INTO _flags_new SELECT * FROM flags;
+      DROP TABLE flags;
+      ALTER TABLE _flags_new RENAME TO flags;
+    `);
+    db.pragma('foreign_keys = ON');
+  }
+
+  // Migration: add release_time to challenges (scheduled reveal).
+  const chCols = db.prepare('PRAGMA table_info(challenges)').all().map((c) => c.name);
+  if (!chCols.includes('release_time')) {
+    db.exec('ALTER TABLE challenges ADD COLUMN release_time INTEGER');
   }
 
   const seed = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');

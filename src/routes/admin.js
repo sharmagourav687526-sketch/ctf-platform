@@ -92,6 +92,8 @@ module.exports = function adminRoutes(db, config) {
       errors.push('Prerequisite challenge does not exist.');
       requiresId = null;
     }
+    const releaseTime = parseEpoch(body.release_time);
+    if (releaseTime === null) errors.push('Invalid release time.');
     return {
       errors,
       values: {
@@ -102,6 +104,7 @@ module.exports = function adminRoutes(db, config) {
         max_attempts: int(body.max_attempts, 0, 1000, 0),
         visible: body.visible === '1' ? 1 : 0,
         requires_id: requiresId,
+        release_time: releaseTime === '' ? null : Number(releaseTime) || null,
       },
     };
   }
@@ -124,11 +127,12 @@ module.exports = function adminRoutes(db, config) {
       });
     }
     const id = db.transaction(() => {
-      const info = db.prepare(`INSERT INTO challenges (name, category, description, connection_info, points, min_points, decay, max_attempts, visible, requires_id, created_at)
-        VALUES (@name, @category, @description, @connection_info, @points, @min_points, @decay, @max_attempts, @visible, @requires_id, @created_at)`)
+      const info = db.prepare(`INSERT INTO challenges (name, category, description, connection_info, points, min_points, decay, max_attempts, visible, requires_id, release_time, created_at)
+        VALUES (@name, @category, @description, @connection_info, @points, @min_points, @decay, @max_attempts, @visible, @requires_id, @release_time, @created_at)`)
         .run({ ...values, created_at: Date.now() });
+      const flagType = ['static', 'regex', 'dynamic'].includes(req.body.flag_type) ? req.body.flag_type : 'static';
       db.prepare('INSERT INTO flags (challenge_id, content, type, case_sensitive) VALUES (?, ?, ?, ?)')
-        .run(info.lastInsertRowid, flagContent, req.body.flag_type === 'regex' ? 'regex' : 'static', req.body.case_insensitive === '1' ? 0 : 1);
+        .run(info.lastInsertRowid, flagContent, flagType, req.body.case_insensitive === '1' ? 0 : 1);
       const hint = String(req.body.hint || '').trim().slice(0, 2000);
       if (hint) db.prepare('INSERT INTO hints (challenge_id, content, cost) VALUES (?, ?, ?)').run(info.lastInsertRowid, hint, int(req.body.hint_cost, 0, 100000, 0));
       storeFiles(info.lastInsertRowid, req.files);
@@ -137,6 +141,47 @@ module.exports = function adminRoutes(db, config) {
     audit.log(db, req, 'challenge.create', values.name, `category=${values.category} points=${values.points}`);
     flash(req, 'success', 'Challenge created.');
     res.redirect(`/admin/challenges/${id}/edit`);
+  });
+
+  // Challenge JSON import (textarea paste) — must be BEFORE /:id routes.
+  router.get('/challenges/import', requireAdmin, (req, res) => {
+    res.render('admin/challenge_import', { title: 'Import challenges', errors: [], imported: null });
+  });
+
+  router.post('/challenges/import', requireAdmin, (req, res) => {
+    const raw = String(req.body.data || '').trim();
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { return res.status(400).render('admin/challenge_import', { title: 'Import challenges', errors: ['Invalid JSON.'], imported: null }); }
+    if (!Array.isArray(parsed)) return res.status(400).render('admin/challenge_import', { title: 'Import challenges', errors: ['Expected a JSON array of challenges.'], imported: null });
+    let count = 0;
+    db.transaction(() => {
+      for (const c of parsed) {
+        const name = String(c.name || '').trim().slice(0, 100);
+        const category = String(c.category || '').trim().slice(0, 50);
+        if (!name || !category) continue;
+        const flags = Array.isArray(c.flags) ? c.flags.filter((f) => f && String(f.content || '').trim()) : [];
+        if (!flags.length) continue;
+        const info = db.prepare(`INSERT INTO challenges (name, category, description, connection_info, points, min_points, decay, max_attempts, visible, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`)
+          .run(name, category, String(c.description || ''), String(c.connection_info || '').slice(0, 500),
+            int(c.points, 0, 100000, 100), int(c.min_points, 0, 100000, int(c.points, 0, 100000, 100)),
+            int(c.decay, 0, 100000, 0), int(c.max_attempts, 0, 1000, 0), Date.now());
+        const cid = info.lastInsertRowid;
+        for (const f of flags) {
+          const ftype = ['static', 'regex', 'dynamic'].includes(f.type) ? f.type : 'static';
+          db.prepare('INSERT INTO flags (challenge_id, content, type, case_sensitive) VALUES (?, ?, ?, ?)')
+            .run(cid, String(f.content).trim(), ftype, f.case_sensitive ? 1 : 0);
+        }
+        for (const h of (Array.isArray(c.hints) ? c.hints : [])) {
+          const hcontent = String(h.content || '').trim().slice(0, 2000);
+          if (hcontent) db.prepare('INSERT INTO hints (challenge_id, content, cost) VALUES (?, ?, ?)').run(cid, hcontent, int(h.cost, 0, 100000, 0));
+        }
+        count += 1;
+      }
+    })();
+    audit.log(db, req, 'challenge.import', '', `count=${count}`);
+    scoreCache.invalidate();
+    res.render('admin/challenge_import', { title: 'Import challenges', errors: [], imported: count });
   });
 
   function loadChallenge(id) {
@@ -166,7 +211,7 @@ module.exports = function adminRoutes(db, config) {
       return res.status(400).render('admin/challenge_form', { title: `Edit ${data.challenge.name}`, ...data, challenge: { ...data.challenge, ...values }, errors });
     }
     db.prepare(`UPDATE challenges SET name=@name, category=@category, description=@description, connection_info=@connection_info,
-      points=@points, min_points=@min_points, decay=@decay, max_attempts=@max_attempts, visible=@visible, requires_id=@requires_id WHERE id=@id`)
+      points=@points, min_points=@min_points, decay=@decay, max_attempts=@max_attempts, visible=@visible, requires_id=@requires_id, release_time=@release_time WHERE id=@id`)
       .run({ ...values, id });
     audit.log(db, req, 'challenge.edit', values.name, `id=${id} visible=${values.visible}`);
     flash(req, 'success', 'Challenge saved.');
@@ -187,8 +232,9 @@ module.exports = function adminRoutes(db, config) {
   router.post('/challenges/:id/flags', (req, res) => {
     const content = String(req.body.content || '').trim().slice(0, 500);
     if (content) {
+      const ftype = ['static', 'regex', 'dynamic'].includes(req.body.type) ? req.body.type : 'static';
       db.prepare('INSERT INTO flags (challenge_id, content, type, case_sensitive) VALUES (?, ?, ?, ?)')
-        .run(Number(req.params.id), content, req.body.type === 'regex' ? 'regex' : 'static', req.body.case_insensitive === '1' ? 0 : 1);
+        .run(Number(req.params.id), content, ftype, req.body.case_insensitive === '1' ? 0 : 1);
     }
     res.redirect(`/admin/challenges/${Number(req.params.id)}/edit`);
   });
@@ -231,6 +277,34 @@ module.exports = function adminRoutes(db, config) {
       storage.deleteFile(file.stored_name);
     }
     res.redirect(`/admin/challenges/${Number(req.params.id)}/edit`);
+  });
+
+  // Per-challenge solve stats.
+  router.get('/challenges/:id/stats', requireAdmin, (req, res) => {
+    const id = Number(req.params.id);
+    const ch = db.prepare('SELECT * FROM challenges WHERE id = ?').get(id);
+    if (!ch) return res.status(404).render('error', { title: 'Not found', message: 'Challenge not found.' });
+    const solvers = db.prepare(`
+      SELECT u.id AS user_id, u.username, s.created_at
+      FROM solves s JOIN users u ON u.id = s.user_id
+      WHERE s.challenge_id = ? ORDER BY s.created_at`).all(id);
+    const subRows = db.prepare('SELECT correct, COUNT(*) AS n FROM submissions WHERE challenge_id = ? GROUP BY correct').all(id);
+    const correct = (subRows.find((r) => r.correct === 1) || { n: 0 }).n;
+    const incorrect = (subRows.find((r) => r.correct === 0) || { n: 0 }).n;
+    res.render('admin/challenge_stats', { title: `Stats: ${ch.name}`, challenge: ch, solvers, correct, incorrect });
+  });
+
+  // Challenge JSON export.
+  router.get('/export/challenges.json', requireAdmin, (req, res) => {
+    const challenges = db.prepare('SELECT * FROM challenges ORDER BY category, id').all().map((c) => ({
+      name: c.name, category: c.category, description: c.description,
+      connection_info: c.connection_info, points: c.points, min_points: c.min_points,
+      decay: c.decay, max_attempts: c.max_attempts, visible: c.visible,
+      flags: db.prepare('SELECT content, type, case_sensitive FROM flags WHERE challenge_id = ?').all(c.id),
+      hints: db.prepare('SELECT content, cost FROM hints WHERE challenge_id = ? ORDER BY id').all(c.id),
+    }));
+    res.set({ 'Content-Type': 'application/json', 'Content-Disposition': 'attachment; filename="challenges.json"' });
+    res.json(challenges);
   });
 
   // Live Markdown preview for the challenge editor (same renderer players get).
@@ -389,13 +463,16 @@ module.exports = function adminRoutes(db, config) {
     if (!name) errors.push('CTF name is required.');
     const start = parseEpoch(req.body.start_time);
     const end = parseEpoch(req.body.end_time);
-    if (start === null || end === null) errors.push('Invalid start or end time.');
+    const freeze = parseEpoch(req.body.freeze_time);
+    if (start === null || end === null || freeze === null) errors.push('Invalid date/time value.');
     if (start && end && Number(end) <= Number(start)) errors.push('End time must be after start time.');
+    if (freeze && end && Number(freeze) >= Number(end)) errors.push('Freeze time must be before end time.');
     const mode = req.body.mode === 'teams' ? 'teams' : 'users';
     if (mode !== req.settings.mode && db.prepare('SELECT COUNT(*) AS n FROM solves').get().n > 0) {
       errors.push('Cannot switch between user and team mode after solves exist. Delete the solves first.');
     }
     if (errors.length) return res.status(400).render('admin/settings', { title: 'Settings', errors });
+    const inviteCode = String(req.body.invite_code || '').trim().slice(0, 64);
     db.transaction(() => {
       setSetting(db, 'ctf_name', name);
       setSetting(db, 'mode', mode);
@@ -404,6 +481,8 @@ module.exports = function adminRoutes(db, config) {
       setSetting(db, 'team_size', int(req.body.team_size, 1, 100, 4));
       setSetting(db, 'start_time', start);
       setSetting(db, 'end_time', end);
+      setSetting(db, 'freeze_time', freeze);
+      setSetting(db, 'invite_code', inviteCode);
     })();
     audit.log(db, req, 'settings.save', '', `mode=${mode} reg=${req.body.registration_open === '1' ? 'open' : 'closed'}`);
     flash(req, 'success', 'Settings saved.');
@@ -420,7 +499,6 @@ module.exports = function adminRoutes(db, config) {
     res.render('admin/audit', { title: 'Audit log', rows, page, pages: Math.max(1, Math.ceil(total / PAGE_SIZE)) });
   });
 
-  // ---------- Exports ----------
   function sendCsv(res, name, rows) {
     res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}"` }).send(toCsv(rows));
   }

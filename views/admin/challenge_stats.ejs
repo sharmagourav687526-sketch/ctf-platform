@@ -1,0 +1,38 @@
+<%- include('../partials/header') %>
+<%- include('../partials/admin_nav') %>
+<div class="row-between">
+  <h1>Stats: <%= challenge.name %></h1>
+  <a class="btn btn-small btn-ghost" href="/admin/challenges/<%= challenge.id %>/edit">&larr; Back to edit</a>
+</div>
+<div class="grid-2" style="margin-bottom:1.5rem">
+  <div class="card" style="text-align:center">
+    <div style="font-size:2.5rem;font-weight:700;color:var(--accent)"><%= solvers.length %></div>
+    <div class="muted small">Solves</div>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:2.5rem;font-weight:700;color:var(--danger)"><%= incorrect %></div>
+    <div class="muted small">Incorrect attempts</div>
+  </div>
+</div>
+<% if (solvers.length === 0) { %>
+  <p class="muted">Nobody has solved this challenge yet.</p>
+<% } else { %>
+<div class="card">
+  <h2>Solvers</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>User</th><th>Time</th></tr></thead>
+      <tbody>
+        <% solvers.forEach(function (s, i) { %>
+        <tr>
+          <td class="muted small"><%= i + 1 %></td>
+          <td><a href="/users/<%= s.user_id %>"><%= s.username %></a><%= i === 0 ? ' <span class="tag" style="background:#b91c1c">FIRST BLOOD</span>' : '' %></td>
+          <td class="muted small" style="white-space:nowrap"><%= new Date(s.created_at).toISOString().replace('T',' ').slice(0,19) %> UTC</td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+<%- include('../partials/footer') %>

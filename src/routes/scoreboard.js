@@ -58,7 +58,10 @@ module.exports = function scoreboardRoutes(db) {
   });
 
   router.get('/api/scoreboard', canView, (req, res) => {
-    const { standings, timelines } = scoreCache.get(db, req.settings.mode, computeScoreboard);
+    const isAdmin = req.user && req.user.role === 'admin';
+    const freezeMs = req.settings.freeze_time ? Number(req.settings.freeze_time) : null;
+    const cutoff = (!isAdmin && freezeMs && Date.now() > freezeMs) ? freezeMs : null;
+    const { standings, timelines } = scoreCache.get(db, req.settings.mode, computeScoreboard, cutoff);
     const offset = Math.max(0, Number(req.query.offset) || 0);
     const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 200));
     const page = standings.slice(offset, offset + limit);

@@ -1,0 +1,18 @@
+<%- include('../partials/header') %>
+<%- include('../partials/admin_nav') %>
+<h1>Import challenges</h1>
+<% if (errors.length) { errors.forEach(function (e) { %><div class="flash flash-error" role="alert"><%= e %></div><% }); } %>
+<% if (imported !== null) { %>
+  <div class="flash flash-success" role="alert">Imported <%= imported %> challenge<%= imported !== 1 ? 's' : '' %> successfully.</div>
+<% } %>
+<div class="card">
+  <p class="muted small">Paste the JSON from <a href="/export/challenges.json">Export JSON</a>. Files are not included in exports; re-upload them after import.</p>
+  <form method="post" action="/admin/challenges/import" class="form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Challenge JSON
+      <textarea name="data" rows="16" required placeholder='[{"name":"...","category":"...","flags":[{"content":"flag{...}","type":"static","case_sensitive":1}]}]' spellcheck="false" style="font-family:monospace;font-size:.85em"></textarea>
+    </label>
+    <button type="submit" class="btn">Import challenges</button>
+  </form>
+</div>
+<%- include('../partials/footer') %>

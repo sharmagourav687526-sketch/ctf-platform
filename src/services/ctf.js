@@ -1,7 +1,8 @@
 'use strict';
 
-const { checkFlag } = require('./flags');
+const { checkFlag, generateDynamicFlag } = require('./flags');
 const { challengeValue, ownerOf, solveCounts } = require('../scoring');
+const config = require('../config');
 const { solversOf } = require('./activity');
 const scoreCache = require('../scoreboardCache');
 const sse = require('./sse');
@@ -27,10 +28,12 @@ function solvedSet(db, mode, user) {
 }
 
 function listChallenges(db, mode, user) {
+  const now = Date.now();
   const counts = solveCounts(db);
   const solved = solvedSet(db, mode, user);
   return db.prepare('SELECT * FROM challenges WHERE visible = 1 ORDER BY category, points, id').all()
     .filter((c) => !c.requires_id || solved.has(c.requires_id))
+    .filter((c) => user.role === 'admin' || !c.release_time || c.release_time <= now)
     .map((c) => ({
       id: c.id,
       name: c.name,
@@ -42,8 +45,10 @@ function listChallenges(db, mode, user) {
 }
 
 function getChallenge(db, mode, user, id) {
+  const now = Date.now();
   const c = db.prepare('SELECT * FROM challenges WHERE id = ? AND visible = 1').get(id);
   if (!c) return null;
+  if (user.role !== 'admin' && c.release_time && c.release_time > now) return null;
   const solved = solvedSet(db, mode, user);
   if (c.requires_id && !solved.has(c.requires_id)) return null;
   const counts = solveCounts(db);
@@ -57,6 +62,11 @@ function getChallenge(db, mode, user, id) {
   const hints = db.prepare('SELECT id, content, cost FROM hints WHERE challenge_id = ? ORDER BY id').all(id)
     .map((h) => (unlocked.has(h.id) ? { id: h.id, cost: h.cost, unlocked: true, content: h.content } : { id: h.id, cost: h.cost, unlocked: false }));
   const attempts = db.prepare('SELECT COUNT(*) AS n FROM submissions WHERE challenge_id = ? AND user_id = ?').get(id, user.id).n;
+  const flags = db.prepare('SELECT * FROM flags WHERE challenge_id = ?').all(id);
+  const dynamicFlagRow = flags.find((f) => f.type === 'dynamic');
+  const dynamic_flag = (dynamicFlagRow && config.dynamicFlagSecret)
+    ? generateDynamicFlag(config.dynamicFlagSecret, dynamicFlagRow.content, user.id, id)
+    : null;
   return {
     id: c.id,
     name: c.name,
@@ -71,6 +81,7 @@ function getChallenge(db, mode, user, id) {
     hints,
     files: db.prepare('SELECT id, filename, size FROM files WHERE challenge_id = ?').all(id),
     solvers: solversOf(db, mode, id),
+    dynamic_flag,
   };
 }
 
@@ -102,7 +113,11 @@ function submitFlag(db, { settings, user, challengeId, provided, ip, now = Date.
     }
 
     const flags = db.prepare('SELECT * FROM flags WHERE challenge_id = ?').all(ch.id);
-    const correct = checkFlag(flags, provided);
+    const correct = checkFlag(flags, provided, {
+      dynamicFlagSecret: config.dynamicFlagSecret,
+      userId: user.id,
+      challengeId: ch.id,
+    });
     const teamId = mode === 'teams' ? user.team_id : null;
     db.prepare('INSERT INTO submissions (challenge_id, user_id, team_id, provided, correct, ip, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(ch.id, user.id, teamId, String(provided).slice(0, 500), correct ? 1 : 0, ip || null, now);

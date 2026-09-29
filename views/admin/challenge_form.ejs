@@ -1,6 +1,6 @@
 <%- include('../partials/header') %>
 <%- include('../partials/admin_nav') %>
-<% const c = challenge || { name: '', category: '', description: '', connection_info: '', points: 100, min_points: 100, decay: 0, max_attempts: 0, visible: 1, requires_id: null }; %>
+<% const c = challenge || { name: '', category: '', description: '', connection_info: '', points: 100, min_points: 100, decay: 0, max_attempts: 0, visible: 1, requires_id: null, release_time: null }; %>
 <% const isEdit = !!(challenge && challenge.id); %>
 <div class="row-between">
   <h1><%= isEdit ? 'Edit challenge' : 'New challenge' %></h1>
@@ -48,13 +48,18 @@
     </select>
   </label>
   <label class="check"><input type="checkbox" name="visible" value="1" <%= c.visible ? 'checked' : '' %>> Visible to players</label>
+  <label>Scheduled release time <span class="muted small">(blank = visible immediately once enabled above)</span>
+    <input type="datetime-local" data-epoch-input="release_time" data-epoch="<%= c.release_time || '' %>">
+    <input type="hidden" name="release_time" value="<%= c.release_time || '' %>">
+  </label>
+  <% if (isEdit) { %><p class="muted small"><a href="/admin/challenges/<%= challenge.id %>/stats">View solve statistics &rarr;</a></p><% } %>
 
   <% if (!isEdit) { %>
     <h2>First flag</h2>
     <div class="grid-2">
       <label>Flag <input type="text" name="flag" required maxlength="500" placeholder="flag{...}" spellcheck="false"></label>
       <label>Type
-        <select name="flag_type"><option value="static">Static (exact match)</option><option value="regex">Regex (full match)</option></select>
+        <select name="flag_type"><option value="static">Static (exact match)</option><option value="regex">Regex (full match)</option><option value="dynamic">Dynamic (per-user HMAC)</option></select>
       </label>
     </div>
     <label class="check"><input type="checkbox" name="case_insensitive" value="1"> Case insensitive</label>
@@ -94,7 +99,7 @@
   <form method="post" action="/admin/challenges/<%= challenge.id %>/flags" class="form inline-form">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <input type="text" name="content" placeholder="Additional flag" required maxlength="500">
-    <select name="type"><option value="static">Static</option><option value="regex">Regex</option></select>
+    <select name="type"><option value="static">Static</option><option value="regex">Regex</option><option value="dynamic">Dynamic</option></select>
     <label class="check"><input type="checkbox" name="case_insensitive" value="1"> Case-insensitive</label>
     <button type="submit" class="btn btn-small">Add flag</button>
   </form>

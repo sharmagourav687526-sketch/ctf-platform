@@ -55,4 +55,6 @@ module.exports = {
     maxFails: Number(process.env.LOGIN_MAX_FAILS) || 10,
     lockoutMs: (Number(process.env.LOGIN_LOCKOUT_MINUTES) || 15) * 60 * 1000,
   },
+  // Secret for per-user dynamic flags. Must be set to use dynamic flag type.
+  dynamicFlagSecret: process.env.DYNAMIC_FLAG_SECRET || '',
 };

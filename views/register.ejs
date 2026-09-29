@@ -17,6 +17,11 @@
     <label>Confirm password
       <input type="password" name="confirm" required minlength="8" maxlength="72" autocomplete="new-password">
     </label>
+    <% if (settings.invite_code) { %>
+    <label>Invite code
+      <input type="text" name="invite_code" required maxlength="64" autocomplete="off" placeholder="Enter invite code to register">
+    </label>
+    <% } %>
     <% if (captchaSiteKey) { %>
       <div class="cf-turnstile" data-sitekey="<%= captchaSiteKey %>"></div>
     <% } %>
