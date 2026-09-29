@@ -36,6 +36,11 @@ function createApp({ db, config = defaultConfig }) {
     },
   }));
 
+  app.use((_req, res, next) => {
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self)');
+    next();
+  });
+
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
   app.use(express.json({ limit: '100kb' }));
   app.use(express.static(path.join(config.root, 'public'), { maxAge: config.isProd ? '1h' : 0 }));
