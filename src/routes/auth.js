@@ -62,15 +62,29 @@ function consumeToken(db, token, type) {
   return db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id) || null;
 }
 
-// ── TOTP helpers ───────────────────────────────────────────────────────────
+// ── TOTP helpers (otplib v13 async API) ────────────────────────────────────
 
-function getAuthenticator() {
-  return require('otplib').authenticator;
+let _totp = null;
+function getTotp() {
+  if (_totp) return _totp;
+  const { TOTP, NobleCryptoPlugin, ScureBase32Plugin } = require('otplib');
+  _totp = new TOTP({ crypto: new NobleCryptoPlugin(), base32: new ScureBase32Plugin() });
+  return _totp;
 }
 
-function totpCheck(secret, token) {
+function totpGenerateSecret() {
+  return require('otplib').generateSecret();
+}
+
+function totpUri(account, issuer, secret) {
+  const { generateURI } = require('otplib');
+  return generateURI({ secret, issuer, account, type: 'totp', algorithm: 'SHA1', digits: 6, period: 30 });
+}
+
+async function totpCheck(secret, token) {
   try {
-    return getAuthenticator().check(String(token).replace(/\s/g, ''), secret);
+    const result = await getTotp().verify(String(token).replace(/\s/g, ''), { secret });
+    return result && result.valid === true;
   } catch {
     return false;
   }
@@ -190,7 +204,7 @@ module.exports = function authRoutes(db) {
     res.render('login_totp', { title: 'Two-factor authentication', error: null });
   });
 
-  router.post('/login/verify', authLimiter, (req, res) => {
+  router.post('/login/verify', authLimiter, async (req, res) => {
     const userId = req.session.pendingTotpId;
     if (!userId || Date.now() > (req.session.pendingTotpExpires || 0)) {
       return res.redirect('/login');
@@ -200,7 +214,7 @@ module.exports = function authRoutes(db) {
       delete req.session.pendingTotpId;
       return res.redirect('/login');
     }
-    if (!totpCheck(user.totp_secret, req.body.code)) {
+    if (!(await totpCheck(user.totp_secret, req.body.code))) {
       return res.render('login_totp', { title: 'Two-factor authentication', error: 'Invalid code. Try again.' });
     }
     const returnTo = req.session.returnTo;
@@ -308,10 +322,9 @@ module.exports = function authRoutes(db) {
 
   router.get('/settings/2fa/setup', requireLogin, async (req, res, next) => {
     try {
-      const auth = getAuthenticator();
-      const secret = auth.generateSecret();
+      const secret = totpGenerateSecret();
       req.session.pendingTotpSecret = secret;
-      const otpauthUrl = auth.keyuri(req.user.username, req.settings.ctf_name, secret);
+      const otpauthUrl = totpUri(req.user.username, req.settings.ctf_name, secret);
       const qrDataUrl = await qrcode.toDataURL(otpauthUrl);
       res.render('settings_2fa', { title: 'Enable two-factor auth', secret, qrDataUrl, error: null });
     } catch (e) { next(e); }
@@ -321,9 +334,8 @@ module.exports = function authRoutes(db) {
     try {
       const secret = req.session.pendingTotpSecret;
       if (!secret) return res.redirect('/settings/2fa/setup');
-      if (!totpCheck(secret, req.body.code)) {
-        const auth = getAuthenticator();
-        const otpauthUrl = auth.keyuri(req.user.username, req.settings.ctf_name, secret);
+      if (!(await totpCheck(secret, req.body.code))) {
+        const otpauthUrl = totpUri(req.user.username, req.settings.ctf_name, secret);
         const qrDataUrl = await qrcode.toDataURL(otpauthUrl);
         return res.render('settings_2fa', { title: 'Enable two-factor auth', secret, qrDataUrl, error: 'Invalid code — try again.' });
       }
