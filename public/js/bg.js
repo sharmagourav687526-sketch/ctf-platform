@@ -12,12 +12,16 @@
   var w, h, drops;
   var last = 0;
 
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
   function resize() {
     w = canvas.width = window.innerWidth;
     h = canvas.height = window.innerHeight;
     drops = [];
     for (var i = 0; i < Math.ceil(w / SIZE); i++) drops.push(-Math.random() * 60);
-    ctx.fillStyle = '#05070d';
+    ctx.fillStyle = cssVar('--bg') || '#05070d';
     ctx.fillRect(0, 0, w, h);
   }
 
@@ -26,14 +30,17 @@
     if (document.hidden || now - last < 60) return;
     last = now;
 
-    ctx.fillStyle = 'rgba(5, 7, 13, 0.1)';
+    ctx.fillStyle = cssVar('--bg-fill') || 'rgba(5,7,13,.1)';
     ctx.fillRect(0, 0, w, h);
     ctx.font = SIZE + 'px monospace';
+
+    var color  = cssVar('--matrix-color')  || 'rgba(0,229,160,.75)';
+    var bright = cssVar('--matrix-bright') || '#d5fff2';
 
     for (var i = 0; i < drops.length; i++) {
       var y = drops[i] * SIZE;
       if (y > 0) {
-        ctx.fillStyle = Math.random() > 0.97 ? '#d5fff2' : 'rgba(0, 229, 160, 0.75)';
+        ctx.fillStyle = Math.random() > 0.97 ? bright : color;
         ctx.fillText(CHARS[Math.floor(Math.random() * CHARS.length)], i * SIZE, y);
       }
       if (y > h && Math.random() > 0.975) drops[i] = 0;

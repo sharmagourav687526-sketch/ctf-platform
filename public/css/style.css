@@ -1,3 +1,149 @@
+/* ── Themes ─────────────────────────────────────────────────────────────────
+   Each [data-theme] block overrides only the variables that change.
+   bg.js reads --matrix-color / --matrix-bright / --bg-fill for the canvas.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* Matrix — green/black hacker terminal */
+[data-theme="matrix"] {
+  --bg: #020802;
+  --panel: rgba(4, 18, 4, .78);
+  --panel-solid: #040e04;
+  --panel-2: rgba(8, 28, 8, .78);
+  --border: rgba(0, 255, 65, .12);
+  --border-strong: rgba(0, 255, 65, .28);
+  --text: #c8ffc8;
+  --muted: rgba(0, 200, 50, .6);
+  --accent: #00ff41;
+  --accent-2: #00cc33;
+  --cyan: #39ff14;
+  --ok: #00ff41;
+  --info: #00e5a0;
+  --glow: 0 0 22px rgba(0, 255, 65, .45);
+  --matrix-color: rgba(0,255,65,.8);
+  --matrix-bright: #b8ffb8;
+  --bg-fill: rgba(2,8,2,.1);
+}
+[data-theme="matrix"] .bg-glow {
+  background:
+    radial-gradient(800px 400px at 10% -5%, rgba(0,255,65,.12), transparent 60%),
+    radial-gradient(700px 400px at 95% 110%, rgba(0,200,40,.08), transparent 60%),
+    linear-gradient(rgba(0,255,65,.03) 1px, transparent 1px) 0 0 / 46px 46px,
+    linear-gradient(90deg, rgba(0,255,65,.03) 1px, transparent 1px) 0 0 / 46px 46px;
+}
+
+/* Blood — crimson / dark red */
+[data-theme="blood"] {
+  --bg: #0d0203;
+  --panel: rgba(25, 4, 6, .78);
+  --panel-solid: #190406;
+  --panel-2: rgba(38, 6, 10, .78);
+  --border: rgba(255, 40, 60, .13);
+  --border-strong: rgba(255, 40, 60, .28);
+  --text: #ffe8ea;
+  --muted: #b07078;
+  --accent: #ff2244;
+  --accent-2: #cc0020;
+  --cyan: #ff7088;
+  --ok: #ff4466;
+  --info: #ff8899;
+  --glow: 0 0 22px rgba(255, 40, 60, .42);
+  --matrix-color: rgba(255,40,60,.75);
+  --matrix-bright: #ffb0b8;
+  --bg-fill: rgba(13,2,3,.1);
+}
+[data-theme="blood"] .bg-glow {
+  background:
+    radial-gradient(800px 400px at 8% -5%, rgba(200,10,30,.18), transparent 60%),
+    radial-gradient(700px 400px at 100% 110%, rgba(150,0,20,.12), transparent 60%),
+    linear-gradient(rgba(255,40,60,.03) 1px, transparent 1px) 0 0 / 46px 46px,
+    linear-gradient(90deg, rgba(255,40,60,.03) 1px, transparent 1px) 0 0 / 46px 46px;
+}
+
+/* Cyber — neon purple / cyan */
+[data-theme="cyber"] {
+  --bg: #050115;
+  --panel: rgba(10, 4, 28, .80);
+  --panel-solid: #0a041c;
+  --panel-2: rgba(18, 6, 44, .80);
+  --border: rgba(180, 80, 255, .16);
+  --border-strong: rgba(180, 80, 255, .34);
+  --text: #f0e8ff;
+  --muted: #9a80c0;
+  --accent: #e040fb;
+  --accent-2: #00e5ff;
+  --cyan: #00e5ff;
+  --ok: #00e5a0;
+  --info: #00e5ff;
+  --glow: 0 0 22px rgba(224, 64, 251, .42);
+  --matrix-color: rgba(200,80,255,.8);
+  --matrix-bright: #f0c0ff;
+  --bg-fill: rgba(5,1,15,.1);
+}
+[data-theme="cyber"] .bg-glow {
+  background:
+    radial-gradient(900px 500px at 8% -5%, rgba(180,40,255,.22), transparent 60%),
+    radial-gradient(800px 500px at 100% 110%, rgba(0,220,255,.14), transparent 60%),
+    linear-gradient(rgba(180,80,255,.04) 1px, transparent 1px) 0 0 / 46px 46px,
+    linear-gradient(90deg, rgba(180,80,255,.04) 1px, transparent 1px) 0 0 / 46px 46px;
+}
+
+/* Amber — old CRT amber terminal */
+[data-theme="amber"] {
+  --bg: #0a0500;
+  --panel: rgba(22, 10, 0, .80);
+  --panel-solid: #160a00;
+  --panel-2: rgba(34, 16, 0, .80);
+  --border: rgba(255, 160, 0, .14);
+  --border-strong: rgba(255, 160, 0, .30);
+  --text: #ffd680;
+  --muted: #a07030;
+  --accent: #ffaa00;
+  --accent-2: #ff6800;
+  --cyan: #ffcc44;
+  --ok: #88cc00;
+  --info: #ffcc44;
+  --glow: 0 0 22px rgba(255, 160, 0, .42);
+  --matrix-color: rgba(255,160,0,.8);
+  --matrix-bright: #ffe8a0;
+  --bg-fill: rgba(10,5,0,.1);
+}
+[data-theme="amber"] .bg-glow {
+  background:
+    radial-gradient(800px 400px at 8% -5%, rgba(200,80,0,.18), transparent 60%),
+    radial-gradient(700px 400px at 100% 110%, rgba(180,100,0,.12), transparent 60%),
+    linear-gradient(rgba(255,160,0,.03) 1px, transparent 1px) 0 0 / 46px 46px,
+    linear-gradient(90deg, rgba(255,160,0,.03) 1px, transparent 1px) 0 0 / 46px 46px;
+}
+
+/* Ghost — near-monochrome minimal */
+[data-theme="ghost"] {
+  --bg: #080810;
+  --panel: rgba(16, 16, 26, .82);
+  --panel-solid: #10101a;
+  --panel-2: rgba(26, 26, 38, .82);
+  --border: rgba(180, 180, 220, .12);
+  --border-strong: rgba(180, 180, 220, .28);
+  --text: #d0d0e8;
+  --muted: #7878a0;
+  --accent: #a0a0e0;
+  --accent-2: #8080cc;
+  --cyan: #b0b0ee;
+  --ok: #80cc80;
+  --info: #b0b0ee;
+  --glow: 0 0 22px rgba(160, 160, 220, .32);
+  --matrix-color: rgba(160,160,220,.7);
+  --matrix-bright: #e0e0f8;
+  --bg-fill: rgba(8,8,16,.1);
+}
+[data-theme="ghost"] .bg-glow {
+  background:
+    radial-gradient(800px 400px at 8% -5%, rgba(120,120,200,.14), transparent 60%),
+    radial-gradient(700px 400px at 100% 110%, rgba(100,100,180,.10), transparent 60%),
+    linear-gradient(rgba(160,160,220,.03) 1px, transparent 1px) 0 0 / 46px 46px,
+    linear-gradient(90deg, rgba(160,160,220,.03) 1px, transparent 1px) 0 0 / 46px 46px;
+}
+
+/* ── Base variables (default theme) ─────────────────── */
 :root {
   --bg: #05070d;
   --panel: rgba(14, 20, 34, .72);
@@ -17,6 +163,9 @@
   --glow: 0 0 22px rgba(0, 229, 160, .35);
   --radius: 14px;
   --mono: ui-monospace, "JetBrains Mono", "Fira Code", SFMono-Regular, Menlo, Consolas, monospace;
+  --matrix-color: rgba(0, 229, 160, .75);
+  --matrix-bright: #d5fff2;
+  --bg-fill: rgba(5, 7, 13, .1);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

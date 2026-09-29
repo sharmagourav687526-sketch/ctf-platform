@@ -473,6 +473,8 @@ module.exports = function adminRoutes(db, config) {
     }
     if (errors.length) return res.status(400).render('admin/settings', { title: 'Settings', errors });
     const inviteCode = String(req.body.invite_code || '').trim().slice(0, 64);
+    const VALID_THEMES = ['default', 'matrix', 'blood', 'cyber', 'amber', 'ghost'];
+    const theme = VALID_THEMES.includes(req.body.theme) ? req.body.theme : 'default';
     db.transaction(() => {
       setSetting(db, 'ctf_name', name);
       setSetting(db, 'mode', mode);
@@ -483,6 +485,7 @@ module.exports = function adminRoutes(db, config) {
       setSetting(db, 'end_time', end);
       setSetting(db, 'freeze_time', freeze);
       setSetting(db, 'invite_code', inviteCode);
+      setSetting(db, 'theme', theme);
     })();
     audit.log(db, req, 'settings.save', '', `mode=${mode} reg=${req.body.registration_open === '1' ? 'open' : 'closed'}`);
     flash(req, 'success', 'Settings saved.');

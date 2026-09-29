@@ -184,6 +184,7 @@ const DEFAULT_SETTINGS = {
   end_time: '',               // epoch ms; empty = never ends
   freeze_time: '',            // epoch ms; if set, public scoreboard freezes at this point
   invite_code: '',            // if non-empty, required at registration
+  theme: 'default',          // ui theme: default|matrix|blood|cyber|amber|ghost
 };
 
 function openDb(file) {

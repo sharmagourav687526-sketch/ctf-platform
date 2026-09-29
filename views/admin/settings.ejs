@@ -31,6 +31,75 @@
   <label>Registration invite code <span class="muted small">(blank = no code required)</span>
     <input type="text" name="invite_code" value="<%= settings.invite_code %>" maxlength="64" placeholder="Leave blank to allow open registration" autocomplete="off" spellcheck="false">
   </label>
+
+  <div>
+    <div style="font-weight:600;margin-bottom:.5rem">UI Theme</div>
+    <p class="muted small" style="margin-bottom:.75rem">Changes the color scheme for all users immediately on save.</p>
+    <input type="hidden" name="theme" id="theme-input" value="<%= settings.theme || 'default' %>">
+    <div class="theme-picker" id="theme-picker">
+      <%
+        var themes = [
+          { id: 'default', name: 'Default',  accent: '#00e5a0', bg: '#05070d', accent2: '#7c5cff' },
+          { id: 'matrix',  name: 'Matrix',   accent: '#00ff41', bg: '#020802', accent2: '#00cc33' },
+          { id: 'blood',   name: 'Blood',    accent: '#ff2244', bg: '#0d0203', accent2: '#cc0020' },
+          { id: 'cyber',   name: 'Cyber',    accent: '#e040fb', bg: '#050115', accent2: '#00e5ff' },
+          { id: 'amber',   name: 'Amber',    accent: '#ffaa00', bg: '#0a0500', accent2: '#ff6800' },
+          { id: 'ghost',   name: 'Ghost',    accent: '#a0a0e0', bg: '#080810', accent2: '#8080cc' },
+        ];
+      %>
+      <% themes.forEach(function(t) { %>
+      <div class="theme-card <%= (settings.theme || 'default') === t.id ? 'selected' : '' %>"
+           data-theme-id="<%= t.id %>"
+           style="--tc-bg:<%= t.bg %>;--tc-a:<%= t.accent %>;--tc-a2:<%= t.accent2 %>">
+        <div class="theme-preview">
+          <div class="tp-bar"></div>
+          <div class="tp-rows">
+            <div class="tp-row"></div>
+            <div class="tp-row tp-short"></div>
+            <div class="tp-row"></div>
+          </div>
+        </div>
+        <div class="theme-card-name"><%= t.name %></div>
+      </div>
+      <% }); %>
+    </div>
+  </div>
+
   <button type="submit" class="btn">Save settings</button>
 </form>
+
+<style>
+.theme-picker { display:flex; flex-wrap:wrap; gap:.75rem; margin-top:.25rem; }
+.theme-card {
+  width: 110px; border-radius: 10px; overflow: hidden;
+  border: 2px solid rgba(255,255,255,.1);
+  cursor: pointer; transition: border-color .2s, transform .15s, box-shadow .2s;
+  user-select: none;
+}
+.theme-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.3); box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+.theme-card.selected { border-color: var(--tc-a); box-shadow: 0 0 0 1px var(--tc-a), 0 4px 16px rgba(0,0,0,.5); }
+.theme-preview {
+  background: var(--tc-bg); height: 64px; padding: 6px 8px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.tp-bar { height: 6px; border-radius: 3px; background: var(--tc-a); width: 50%; opacity:.8; }
+.tp-rows { display:flex; flex-direction:column; gap:4px; flex:1; justify-content:center; }
+.tp-row { height: 4px; border-radius: 2px; background: var(--tc-a2); opacity:.5; }
+.tp-short { width: 65%; }
+.theme-card-name { font-size:.78rem; font-weight:600; padding:5px 8px; background:rgba(0,0,0,.3); color:#fff; text-align:center; }
+</style>
+
+<script>
+(function () {
+  var picker = document.getElementById('theme-picker');
+  var input  = document.getElementById('theme-input');
+  picker.addEventListener('click', function (e) {
+    var card = e.target.closest('.theme-card');
+    if (!card) return;
+    picker.querySelectorAll('.theme-card').forEach(function (c) { c.classList.remove('selected'); });
+    card.classList.add('selected');
+    input.value = card.dataset.themeId;
+  });
+})();
+</script>
 <%- include('../partials/footer', { scripts: ['admin'] }) %>
