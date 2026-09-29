@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const { getSettings } = require('./db');
 const { eventState } = require('./services/ctf');
+const config = require('./config');
 
 /** Load the logged-in user, site settings and CSRF token for every request. */
 function context(db) {
@@ -73,4 +74,30 @@ function flash(req, type, text) {
   req.session.flash = { type, text };
 }
 
-module.exports = { context, csrf, requireLogin, requireAdmin, requireStaff, monitorReadOnly, flash };
+/**
+ * Cloudflare Turnstile CAPTCHA verification. No-op if TURNSTILE_SECRET_KEY is not set.
+ * Fails open if Cloudflare is unreachable — better for a competition than locking out players.
+ */
+async function verifyCaptcha(req, res, next) {
+  if (!config.captcha.secretKey) return next();
+  const token = req.body['cf-turnstile-response'];
+  if (!token) {
+    return res.status(400).render('error', { title: 'Forbidden', message: 'CAPTCHA verification required. Please reload the page and try again.' });
+  }
+  try {
+    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: config.captcha.secretKey, response: token, remoteip: req.ip }),
+    });
+    const data = await resp.json();
+    if (!data.success) {
+      return res.status(400).render('error', { title: 'Forbidden', message: 'CAPTCHA check failed. Please reload the page and try again.' });
+    }
+  } catch {
+    // Fail open so a Cloudflare outage doesn't lock out participants.
+  }
+  next();
+}
+
+module.exports = { context, csrf, requireLogin, requireAdmin, requireStaff, monitorReadOnly, flash, verifyCaptcha };

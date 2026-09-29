@@ -41,5 +41,13 @@
 <% } else if (event.ended) { %>
   <div class="banner banner-warn">The CTF has ended. Submissions are closed.</div>
 <% } %>
+<% if (user && !user.email_verified) { %>
+  <div class="banner banner-warn">Please verify your email address.
+    <form method="post" action="/resend-verification" class="inline" style="display:inline">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="link-btn" style="text-decoration:underline">Resend verification email</button>
+    </form>
+  </div>
+<% } %>
 <main class="container" id="content">
 <% if (flash) { %><div class="flash flash-<%= flash.type %>" role="status"><%= flash.text %></div><% } %>

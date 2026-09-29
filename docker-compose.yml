@@ -7,9 +7,25 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      # Required: generate one with `openssl rand -hex 32` and put it in .env
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
-      # Set to 1 when running behind an HTTPS reverse proxy (nginx, Caddy, Traefik).
+      APP_URL: ${APP_URL:-http://localhost:3000}
       TRUST_PROXY: ${TRUST_PROXY:-}
+      # Email (leave SMTP_HOST blank to disable)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      # CAPTCHA (leave blank to disable)
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      # S3 storage (leave S3_BUCKET blank to use local disk)
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
     volumes:
       - ./data:/app/data

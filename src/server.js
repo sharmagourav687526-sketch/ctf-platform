@@ -17,18 +17,20 @@ function createApp({ db, config = defaultConfig }) {
   app.set('trust proxy', config.trustProxy);
   app.disable('x-powered-by');
 
+  // Extend CSP to allow Cloudflare Turnstile when a site key is configured.
+  const hasCaptcha = !!config.captcha.siteKey;
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
+        scriptSrc: hasCaptcha ? ["'self'", 'https://challenges.cloudflare.com'] : ["'self'"],
         styleSrc: ["'self'"],
         imgSrc: ["'self'", 'data:'],
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"],
+        frameSrc: hasCaptcha ? ['https://challenges.cloudflare.com'] : ["'none'"],
         formAction: ["'self'"],
         baseUri: ["'self'"],
-        // Plain-http local development must keep working.
         upgradeInsecureRequests: config.isProd ? [] : null,
       },
     },
@@ -49,6 +51,7 @@ function createApp({ db, config = defaultConfig }) {
 
   app.locals.fmtDate = fmtDate;
   app.locals.renderMarkdown = renderMarkdown;
+  app.locals.captchaSiteKey = config.captcha.siteKey || '';
 
   app.use(context(db));
   app.use(csrf);

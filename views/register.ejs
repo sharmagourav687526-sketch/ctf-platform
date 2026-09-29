@@ -17,6 +17,9 @@
     <label>Confirm password
       <input type="password" name="confirm" required minlength="8" maxlength="72" autocomplete="new-password">
     </label>
+    <% if (captchaSiteKey) { %>
+      <div class="cf-turnstile" data-sitekey="<%= captchaSiteKey %>"></div>
+    <% } %>
     <button type="submit" class="btn">Create account</button>
   </form>
   <p class="muted">Already registered? <a href="/login">Login</a></p>

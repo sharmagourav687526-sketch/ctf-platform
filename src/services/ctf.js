@@ -3,6 +3,7 @@
 const { checkFlag } = require('./flags');
 const { challengeValue, ownerOf, solveCounts } = require('../scoring');
 const { solversOf } = require('./activity');
+const scoreCache = require('../scoreboardCache');
 
 const ATTEMPTS_PER_MINUTE = 10;
 
@@ -108,6 +109,7 @@ function submitFlag(db, { settings, user, challengeId, provided, ip, now = Date.
 
     const firstBlood = db.prepare('SELECT COUNT(*) AS n FROM solves WHERE challenge_id = ?').get(ch.id).n === 0;
     db.prepare('INSERT INTO solves (challenge_id, user_id, team_id, created_at) VALUES (?, ?, ?, ?)').run(ch.id, user.id, teamId, now);
+    scoreCache.invalidate();
     const value = challengeValue(ch, solveCounts(db).get(ch.id) || 0);
     return { status: 'correct', message: firstBlood ? `Correct! First blood! +${value} points` : `Correct! +${value} points`, firstBlood, value };
   })();

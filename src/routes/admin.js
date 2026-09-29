@@ -1,6 +1,5 @@
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const multer = require('multer');
@@ -8,8 +7,10 @@ const bcrypt = require('bcryptjs');
 const { setSetting } = require('../db');
 const { requireLogin, requireAdmin, requireStaff, monitorReadOnly, flash } = require('../middleware');
 const { computeScoreboard, challengeValue, solveCounts } = require('../scoring');
-const { toCsv, randomHex, parseEpoch, renderMarkdown } = require('../utils');
+const { toCsv, parseEpoch, renderMarkdown } = require('../utils');
 const { validatePassword } = require('./auth');
+const storage = require('../services/storage');
+const scoreCache = require('../scoreboardCache');
 
 const PAGE_SIZE = 50;
 const MAX_FILES_PER_UPLOAD = 10;
@@ -24,26 +25,17 @@ module.exports = function adminRoutes(db, config) {
   const router = express.Router();
   router.use(requireLogin, requireStaff, monitorReadOnly);
 
-  fs.mkdirSync(config.uploadDir, { recursive: true });
   const upload = multer({
-    storage: multer.diskStorage({
-      destination: config.uploadDir,
-      filename: (req, file, cb) => cb(null, randomHex(16)),
-    }),
+    storage: storage.makeMulterStorage(multer),
     limits: { fileSize: config.maxUploadBytes, files: MAX_FILES_PER_UPLOAD },
   });
 
-  function discardFiles(files) {
-    for (const f of files || []) fs.rm(f.path, { force: true }, () => {});
-  }
-
-  // Register uploaded files against a challenge. The on-disk name is random hex; only a
-  // sanitised display name is kept, so an upload can never choose where it is written.
+  // Register uploaded files against a challenge. stored_name is random hex (disk) or S3 key.
   function storeFiles(challengeId, files) {
     const insert = db.prepare('INSERT INTO files (challenge_id, filename, stored_name, size) VALUES (?, ?, ?, ?)');
     for (const f of files || []) {
       const filename = path.basename(f.originalname).replace(/[\x00-\x1f"\\/]/g, '_').slice(0, 200) || 'file';
-      insert.run(challengeId, filename, f.filename, f.size);
+      insert.run(challengeId, filename, storage.storedNameOf(f), f.size);
     }
   }
 
@@ -124,7 +116,7 @@ module.exports = function adminRoutes(db, config) {
     const flagContent = String(req.body.flag || '').trim();
     if (!flagContent) errors.push('At least one flag is required.');
     if (errors.length) {
-      discardFiles(req.files);
+      storage.discardFiles(req.files);
       return res.status(400).render('admin/challenge_form', {
         title: 'New challenge', challenge: values, flags: [], hints: [], files: [], others: db.prepare('SELECT id, name FROM challenges ORDER BY name').all(), errors,
       });
@@ -181,7 +173,7 @@ module.exports = function adminRoutes(db, config) {
     const id = Number(req.params.id);
     const files = db.prepare('SELECT stored_name FROM files WHERE challenge_id = ?').all(id);
     db.prepare('DELETE FROM challenges WHERE id = ?').run(id);
-    for (const f of files) fs.rm(path.join(config.uploadDir, f.stored_name), { force: true }, () => {});
+    for (const f of files) storage.deleteFile(f.stored_name);
     flash(req, 'success', 'Challenge deleted.');
     res.redirect('/admin/challenges');
   });
@@ -230,7 +222,7 @@ module.exports = function adminRoutes(db, config) {
     const file = db.prepare('SELECT * FROM files WHERE id = ? AND challenge_id = ?').get(Number(req.params.fid), Number(req.params.id));
     if (file) {
       db.prepare('DELETE FROM files WHERE id = ?').run(file.id);
-      fs.rm(path.join(config.uploadDir, file.stored_name), { force: true }, () => {});
+      storage.deleteFile(file.stored_name);
     }
     res.redirect(`/admin/challenges/${Number(req.params.id)}/edit`);
   });
@@ -331,6 +323,7 @@ module.exports = function adminRoutes(db, config) {
       }
       db.prepare('DELETE FROM submissions WHERE id = ?').run(s.id);
     })();
+    scoreCache.invalidate();
     flash(req, 'success', 'Submission removed.');
     back(req, res, '/admin/submissions');
   });
@@ -345,6 +338,7 @@ module.exports = function adminRoutes(db, config) {
     } else {
       db.prepare('INSERT INTO awards (user_id, team_id, name, value, created_at) VALUES (?, ?, ?, ?, ?)')
         .run(user.id, req.settings.mode === 'teams' ? user.team_id : null, name, value, Date.now());
+      scoreCache.invalidate();
       flash(req, 'success', `Awarded ${value} points to ${user.username}.`);
     }
     res.redirect('/admin');

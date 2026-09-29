@@ -5,30 +5,32 @@ const path = require('path');
 const Database = require('better-sqlite3');
 
 const USERS_TABLE = `CREATE TABLE users (
-  id            INTEGER PRIMARY KEY,
-  username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
-  email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
-  password_hash TEXT NOT NULL,
-  role          TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin','monitor')),
-  team_id       INTEGER REFERENCES teams(id) ON DELETE SET NULL,
-  country       TEXT,
-  hidden        INTEGER NOT NULL DEFAULT 0,
-  banned        INTEGER NOT NULL DEFAULT 0,
-  created_at    INTEGER NOT NULL
+  id             INTEGER PRIMARY KEY,
+  username       TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  email          TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash  TEXT NOT NULL,
+  role           TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin','monitor')),
+  team_id        INTEGER REFERENCES teams(id) ON DELETE SET NULL,
+  country        TEXT,
+  hidden         INTEGER NOT NULL DEFAULT 0,
+  banned         INTEGER NOT NULL DEFAULT 0,
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  created_at     INTEGER NOT NULL
 )`;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
-  id            INTEGER PRIMARY KEY,
-  username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
-  email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
-  password_hash TEXT NOT NULL,
-  role          TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin','monitor')),
-  team_id       INTEGER REFERENCES teams(id) ON DELETE SET NULL,
-  country       TEXT,
-  hidden        INTEGER NOT NULL DEFAULT 0,
-  banned        INTEGER NOT NULL DEFAULT 0,
-  created_at    INTEGER NOT NULL
+  id             INTEGER PRIMARY KEY,
+  username       TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  email          TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash  TEXT NOT NULL,
+  role           TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin','monitor')),
+  team_id        INTEGER REFERENCES teams(id) ON DELETE SET NULL,
+  country        TEXT,
+  hidden         INTEGER NOT NULL DEFAULT 0,
+  banned         INTEGER NOT NULL DEFAULT 0,
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  created_at     INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS teams (
@@ -138,6 +140,16 @@ CREATE TABLE IF NOT EXISTS sessions (
   sess    TEXT NOT NULL,
   expires INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS email_tokens (
+  id         INTEGER PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token      TEXT NOT NULL UNIQUE,
+  type       TEXT NOT NULL CHECK (type IN ('verify','reset')),
+  expires_at INTEGER NOT NULL,
+  used       INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
 `;
 
 const DEFAULT_SETTINGS = {
@@ -172,6 +184,12 @@ function openDb(file) {
     db.pragma('legacy_alter_table = OFF');
     db.pragma('foreign_keys = ON');
   }
+  // Migration: add email_verified column. Existing users default to 1 (already trusted).
+  const userCols = db.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
+  if (!userCols.includes('email_verified')) {
+    db.exec('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1');
+  }
+
   const seed = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) seed.run(k, v);
   return db;

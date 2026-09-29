@@ -1,10 +1,10 @@
 'use strict';
 
-const path = require('path');
 const express = require('express');
 const ctf = require('../services/ctf');
 const { requireLogin } = require('../middleware');
 const { renderMarkdown } = require('../utils');
+const storage = require('../services/storage');
 
 module.exports = function challengeRoutes(db, config) {
   const router = express.Router();
@@ -53,8 +53,7 @@ module.exports = function challengeRoutes(db, config) {
   router.get('/files/:id', requireLogin, gate, (req, res) => {
     const file = db.prepare('SELECT f.* FROM files f JOIN challenges c ON c.id = f.challenge_id WHERE f.id = ? AND c.visible = 1').get(Number(req.params.id));
     if (!file) return res.status(404).render('error', { title: 'Not found', message: 'File not found.' });
-    // stored_name is generated server-side (hex), never user input, so it cannot escape uploadDir.
-    res.download(path.join(config.uploadDir, file.stored_name), file.filename);
+    storage.serveFile(res, file.stored_name, file.filename);
   });
 
   return router;

@@ -1,0 +1,20 @@
+<%- include('partials/header') %>
+<section class="narrow">
+  <h1>Email verification</h1>
+  <% if (success) { %>
+    <div class="flash flash-success" role="status"><%= message %></div>
+    <p><a href="/challenges" class="btn">Go to challenges</a></p>
+  <% } else { %>
+    <div class="flash flash-error" role="alert"><%= message %></div>
+    <% if (user) { %>
+      <p>Need a new link?</p>
+      <form method="post" action="/resend-verification" class="form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="btn">Resend verification email</button>
+      </form>
+    <% } else { %>
+      <p><a href="/login">Log in</a> to request a new verification link from your settings page.</p>
+    <% } %>
+  <% } %>
+</section>
+<%- include('partials/footer') %>

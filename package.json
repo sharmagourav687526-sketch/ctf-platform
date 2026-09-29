@@ -9,6 +9,7 @@
     "seed": "node scripts/seed.js",
     "demo": "node scripts/demo.js",
     "create-admin": "node scripts/create-admin.js",
+    "backup": "node scripts/backup.js",
     "test": "node tests/unit.test.js && node tests/app.test.js"
   },
   "engines": {
@@ -23,6 +24,7 @@
     "express-rate-limit": "^7.4.0",
     "express-session": "^1.18.0",
     "helmet": "^8.0.0",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^10.0.12"
   }
 }

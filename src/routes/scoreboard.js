@@ -2,6 +2,7 @@
 
 const express = require('express');
 const { computeScoreboard, challengeValue, solveCounts } = require('../scoring');
+const scoreCache = require('../scoreboardCache');
 const { recentActivity, siteStats } = require('../services/activity');
 const { flash, requireLogin } = require('../middleware');
 const { randomHex } = require('../utils');
@@ -26,7 +27,7 @@ module.exports = function scoreboardRoutes(db) {
       announcements,
       stats: siteStats(db, req.settings.mode),
       categories: db.prepare('SELECT DISTINCT category FROM challenges WHERE visible = 1 ORDER BY category').all().map((r) => r.category),
-      top: showBoard ? computeScoreboard(db, req.settings.mode).standings.slice(0, 5) : [],
+      top: showBoard ? scoreCache.get(db, req.settings.mode, computeScoreboard).standings.slice(0, 5) : [],
       showBoard,
       activity: showBoard ? recentActivity(db, req.settings.mode, { limit: 8 }) : [],
     });
@@ -56,7 +57,7 @@ module.exports = function scoreboardRoutes(db) {
   });
 
   router.get('/api/scoreboard', canView, (req, res) => {
-    const { standings, timelines } = computeScoreboard(db, req.settings.mode);
+    const { standings, timelines } = scoreCache.get(db, req.settings.mode, computeScoreboard);
     res.set('Cache-Control', 'no-store');
     res.json({
       mode: req.settings.mode,
