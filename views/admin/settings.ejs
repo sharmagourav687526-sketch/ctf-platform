@@ -67,39 +67,4 @@
 
   <button type="submit" class="btn">Save settings</button>
 </form>
-
-<style>
-.theme-picker { display:flex; flex-wrap:wrap; gap:.75rem; margin-top:.25rem; }
-.theme-card {
-  width: 110px; border-radius: 10px; overflow: hidden;
-  border: 2px solid rgba(255,255,255,.1);
-  cursor: pointer; transition: border-color .2s, transform .15s, box-shadow .2s;
-  user-select: none;
-}
-.theme-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.3); box-shadow: 0 4px 14px rgba(0,0,0,.4); }
-.theme-card.selected { border-color: var(--tc-a); box-shadow: 0 0 0 1px var(--tc-a), 0 4px 16px rgba(0,0,0,.5); }
-.theme-preview {
-  background: var(--tc-bg); height: 64px; padding: 6px 8px;
-  display: flex; flex-direction: column; gap: 5px;
-}
-.tp-bar { height: 6px; border-radius: 3px; background: var(--tc-a); width: 50%; opacity:.8; }
-.tp-rows { display:flex; flex-direction:column; gap:4px; flex:1; justify-content:center; }
-.tp-row { height: 4px; border-radius: 2px; background: var(--tc-a2); opacity:.5; }
-.tp-short { width: 65%; }
-.theme-card-name { font-size:.78rem; font-weight:600; padding:5px 8px; background:rgba(0,0,0,.3); color:#fff; text-align:center; }
-</style>
-
-<script>
-(function () {
-  var picker = document.getElementById('theme-picker');
-  var input  = document.getElementById('theme-input');
-  picker.addEventListener('click', function (e) {
-    var card = e.target.closest('.theme-card');
-    if (!card) return;
-    picker.querySelectorAll('.theme-card').forEach(function (c) { c.classList.remove('selected'); });
-    card.classList.add('selected');
-    input.value = card.dataset.themeId;
-  });
-})();
-</script>
 <%- include('../partials/footer', { scripts: ['admin'] }) %>

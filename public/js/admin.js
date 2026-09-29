@@ -104,3 +104,16 @@
     }
   }
 })();
+
+  // ---------- Theme picker ----------
+  var picker = document.getElementById('theme-picker');
+  var themeInput = document.getElementById('theme-input');
+  if (picker && themeInput) {
+    picker.addEventListener('click', function (e) {
+      var card = e.target.closest('.theme-card');
+      if (!card) return;
+      picker.querySelectorAll('.theme-card').forEach(function (c) { c.classList.remove('selected'); });
+      card.classList.add('selected');
+      themeInput.value = card.dataset.themeId;
+    });
+  }
