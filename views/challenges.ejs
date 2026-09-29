@@ -52,6 +52,17 @@
         <h3 class="solvers-title">Solved by</h3>
         <ol id="modal-solvers" class="solvers"></ol>
       </div>
+      <div id="modal-writeups-wrap">
+        <h3 class="solvers-title">Writeups</h3>
+        <ul id="modal-writeups" class="writeups-list"></ul>
+        <div id="writeup-form-wrap" hidden>
+          <form id="writeup-form" class="writeup-form">
+            <input type="url" id="writeup-url" placeholder="https://your-writeup-link.example.com" maxlength="500">
+            <button type="submit" class="btn btn-small">Save</button>
+          </form>
+          <p id="writeup-result" class="result small" role="status"></p>
+        </div>
+      </div>
     </div>
   </div>
 <% } %>

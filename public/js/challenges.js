@@ -26,6 +26,14 @@
     solversWrap: document.getElementById('modal-solvers-wrap'),
     solvers: document.getElementById('modal-solvers'),
   };
+  var els2 = {
+    writeups: document.getElementById('modal-writeups'),
+    writeupsWrap: document.getElementById('modal-writeups-wrap'),
+    writeupFormWrap: document.getElementById('writeup-form-wrap'),
+    writeupForm: document.getElementById('writeup-form'),
+    writeupUrl: document.getElementById('writeup-url'),
+    writeupResult: document.getElementById('writeup-result'),
+  };
   var state = { challenges: [], category: 'all', hideSolved: false, query: '', openId: null, opener: null, justSolved: null };
 
   function el(tag, cls, text) {
@@ -126,6 +134,49 @@
     if (kind === 'bad') { void els.result.offsetWidth; els.result.classList.add('shake'); }
   }
 
+  function renderWriteups(list, solved) {
+    els2.writeups.textContent = '';
+    var myWriteup = null;
+    list.forEach(function (w) {
+      var li = el('li', 'writeup-item');
+      var a = el('a', 'writeup-link', w.username + '\'s writeup');
+      a.href = w.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      li.appendChild(a);
+      if (w.is_mine) {
+        myWriteup = w;
+        var del = el('button', 'btn btn-small btn-danger writeup-del', 'Delete');
+        del.type = 'button';
+        del.addEventListener('click', function () {
+          if (!window.confirm('Delete your writeup?')) return;
+          api('/api/writeups/' + w.id, { method: 'DELETE', body: '{}' }).then(function (r) {
+            if (r.status !== 200) return;
+            loadWriteups(state.openId, solved);
+          });
+        });
+        li.appendChild(del);
+      }
+      els2.writeups.appendChild(li);
+    });
+    if (!list.length) {
+      var empty = el('li', 'muted small', 'No writeups yet.');
+      els2.writeups.appendChild(empty);
+    }
+    els2.writeupFormWrap.hidden = !solved;
+    if (solved) {
+      els2.writeupUrl.value = myWriteup ? myWriteup.url : '';
+      els2.writeupForm.querySelector('button').textContent = myWriteup ? 'Update' : 'Save';
+      els2.writeupResult.textContent = '';
+    }
+  }
+
+  function loadWriteups(challengeId, solved) {
+    api('/api/challenges/' + challengeId + '/writeups').then(function (r) {
+      if (r.status === 200) renderWriteups(r.data, solved);
+    });
+  }
+
   function renderSolvers(list) {
     els.solvers.textContent = '';
     els.solversWrap.hidden = !list.length;
@@ -194,6 +245,7 @@
       setResult('');
       els.input.value = '';
       fillModal(r.data);
+      loadWriteups(id, !!r.data.solved);
       modal.hidden = false;
       document.body.style.overflow = 'hidden';
       if (!els.input.disabled) els.input.focus();
@@ -231,6 +283,23 @@
         api('/api/challenges/' + id).then(function (d) {
           if (d.status === 200) els.attempts.textContent = d.data.max_attempts ? 'Attempts: ' + d.data.attempts + ' / ' + d.data.max_attempts : 'Attempts: ' + d.data.attempts;
         });
+      }
+    });
+  });
+
+  els2.writeupForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var url = els2.writeupUrl.value.trim();
+    if (!url) return;
+    els2.writeupResult.textContent = 'Saving…';
+    api('/api/challenges/' + state.openId + '/writeup', { method: 'POST', body: JSON.stringify({ url: url }) }).then(function (r) {
+      if (r.status === 200) {
+        renderWriteups(r.data.writeups, true);
+        els2.writeupResult.textContent = 'Writeup saved!';
+        els2.writeupResult.className = 'result small ok';
+      } else {
+        els2.writeupResult.textContent = r.data.error || 'Could not save writeup.';
+        els2.writeupResult.className = 'result small bad';
       }
     });
   });

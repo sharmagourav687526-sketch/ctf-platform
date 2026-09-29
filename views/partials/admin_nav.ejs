@@ -4,6 +4,7 @@
   <a href="/admin/users" class="<%= path.startsWith('/admin/users') ? 'active' : '' %>">Users</a>
   <% if (settings.mode === 'teams') { %><a href="/admin/teams" class="<%= path.startsWith('/admin/teams') ? 'active' : '' %>">Teams</a><% } %>
   <a href="/admin/submissions" class="<%= path.startsWith('/admin/submissions') ? 'active' : '' %>">Submissions</a>
+  <a href="/admin/writeups" class="<%= path.startsWith('/admin/writeups') ? 'active' : '' %>">Writeups</a>
   <a href="/admin/announcements" class="<%= path.startsWith('/admin/announcements') ? 'active' : '' %>">Announcements</a>
   <a href="/admin/settings" class="<%= path.startsWith('/admin/settings') ? 'active' : '' %>">Settings</a>
   <% if (user && user.role === 'admin') { %><a href="/admin/audit" class="<%= path.startsWith('/admin/audit') ? 'active' : '' %>">Audit log</a>

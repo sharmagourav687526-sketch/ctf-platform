@@ -1,0 +1,40 @@
+<%- include('../partials/header') %>
+<%- include('../partials/admin_nav') %>
+<div class="row-between">
+  <h1>Writeups</h1>
+  <span class="muted small"><%= rows.length ? (page - 1) * 50 + 1 + '–' + ((page - 1) * 50 + rows.length) : '0' %> entries</span>
+</div>
+<div class="table-wrap">
+  <table class="table">
+    <thead>
+      <tr><th>When</th><th>User</th><th>Challenge</th><th>URL</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% rows.forEach(function (w) { %>
+      <tr>
+        <td class="muted small" style="white-space:nowrap"><%= fmtDate(w.created_at) %></td>
+        <td><a href="/users/<%= w.user_id %>"><%= w.username %></a></td>
+        <td><a href="/admin/challenges/<%= w.challenge_id %>/edit"><%= w.challenge %></a></td>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          <a href="<%= w.url %>" target="_blank" rel="noopener noreferrer" title="<%= w.url %>"><%= w.url %></a>
+        </td>
+        <td>
+          <form method="post" action="/admin/writeups/<%= w.id %>/delete" class="inline" data-confirm="Delete this writeup?">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="btn btn-small btn-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      <% }); %>
+      <% if (!rows.length) { %>
+        <tr><td colspan="5" class="muted">No writeups submitted yet.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+<p class="pager">
+  <% if (page > 1) { %><a href="/admin/writeups?page=<%= page - 1 %>">&larr; Newer</a><% } %>
+  <span class="muted">Page <%= page %> of <%= pages %></span>
+  <% if (page < pages) { %><a href="/admin/writeups?page=<%= page + 1 %>">Older &rarr;</a><% } %>
+</p>
+<%- include('../partials/footer') %>

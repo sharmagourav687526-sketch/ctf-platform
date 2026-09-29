@@ -499,6 +499,28 @@ module.exports = function adminRoutes(db, config) {
     res.render('admin/audit', { title: 'Audit log', rows, page, pages: Math.max(1, Math.ceil(total / PAGE_SIZE)) });
   });
 
+  // ---------- Writeups ----------
+  router.get('/writeups', (req, res) => {
+    const page = Math.max(1, int(req.query.page, 1, 100000, 1));
+    const total = db.prepare('SELECT COUNT(*) AS n FROM writeups').get().n;
+    const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const rows = db.prepare(`
+      SELECT w.id, w.url, w.created_at, u.username, u.id AS user_id,
+             c.name AS challenge, c.id AS challenge_id
+      FROM writeups w
+      JOIN users u ON u.id = w.user_id
+      JOIN challenges c ON c.id = w.challenge_id
+      ORDER BY w.created_at DESC LIMIT ? OFFSET ?
+    `).all(PAGE_SIZE, (page - 1) * PAGE_SIZE);
+    res.render('admin/writeups', { title: 'Writeups', rows, page, pages });
+  });
+
+  router.post('/writeups/:id/delete', requireAdmin, (req, res) => {
+    db.prepare('DELETE FROM writeups WHERE id = ?').run(Number(req.params.id));
+    flash(req, 'Writeup deleted.', 'ok');
+    back(req, res, '/admin/writeups');
+  });
+
   function sendCsv(res, name, rows) {
     res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}"` }).send(toCsv(rows));
   }

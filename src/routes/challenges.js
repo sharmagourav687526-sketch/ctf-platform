@@ -50,6 +50,51 @@ module.exports = function challengeRoutes(db, config) {
     res.status(result.status === 'ok' ? 200 : result.status === 'not_found' ? 404 : 403).json(result);
   });
 
+  // ---------- Writeups ----------
+
+  function getWriteups(challengeId, userId) {
+    return db.prepare(`
+      SELECT w.id, w.user_id, u.username, w.url, w.created_at
+      FROM writeups w JOIN users u ON u.id = w.user_id
+      WHERE w.challenge_id = ? ORDER BY w.created_at ASC
+    `).all(challengeId).map((w) => ({ ...w, is_mine: w.user_id === userId }));
+  }
+
+  router.get('/api/challenges/:id/writeups', requireLogin, gate, (req, res) => {
+    const ch = db.prepare('SELECT id FROM challenges WHERE id = ? AND visible = 1').get(Number(req.params.id));
+    if (!ch) return res.status(404).json({ error: 'Not found' });
+    res.json(getWriteups(ch.id, req.user.id));
+  });
+
+  router.post('/api/challenges/:id/writeup', requireLogin, gate, (req, res) => {
+    const challengeId = Number(req.params.id);
+    const ch = db.prepare('SELECT id FROM challenges WHERE id = ? AND visible = 1').get(challengeId);
+    if (!ch) return res.status(404).json({ error: 'Not found' });
+
+    const solved = db.prepare('SELECT 1 FROM solves WHERE challenge_id = ? AND user_id = ?').get(challengeId, req.user.id);
+    if (!solved) return res.status(403).json({ error: 'Solve this challenge first.' });
+
+    const url = String(req.body.url || '').trim().slice(0, 500);
+    if (!url) return res.status(400).json({ error: 'URL is required.' });
+    if (!/^https?:\/\/.{3,}/.test(url)) return res.status(400).json({ error: 'URL must start with http:// or https://' });
+
+    db.prepare(`
+      INSERT INTO writeups (challenge_id, user_id, url, created_at)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(challenge_id, user_id) DO UPDATE SET url = excluded.url
+    `).run(challengeId, req.user.id, url, Date.now());
+
+    res.json({ ok: true, writeups: getWriteups(challengeId, req.user.id) });
+  });
+
+  router.delete('/api/writeups/:id', requireLogin, (req, res) => {
+    const w = db.prepare('SELECT * FROM writeups WHERE id = ?').get(Number(req.params.id));
+    if (!w) return res.status(404).json({ error: 'Not found' });
+    if (w.user_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+    db.prepare('DELETE FROM writeups WHERE id = ?').run(w.id);
+    res.json({ ok: true });
+  });
+
   router.get('/files/:id', requireLogin, gate, (req, res) => {
     const file = db.prepare('SELECT f.* FROM files f JOIN challenges c ON c.id = f.challenge_id WHERE f.id = ? AND c.visible = 1').get(Number(req.params.id));
     if (!file) return res.status(404).render('error', { title: 'Not found', message: 'File not found.' });
