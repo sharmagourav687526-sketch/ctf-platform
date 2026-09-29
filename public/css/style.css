@@ -143,6 +143,116 @@
     linear-gradient(90deg, rgba(160,160,220,.03) 1px, transparent 1px) 0 0 / 46px 46px;
 }
 
+/* ── Hacking UX effects ──────────────────────────────────────────────────────
+   Custom cursor, scanlines, noise, glitch brand, scroll reveal, page fade-in.
+   All motion respects prefers-reduced-motion (disabled at bottom of file).
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* Custom cursor (pointer devices only) */
+@media (pointer: fine) {
+  html { cursor: none !important; }
+  #hck-cursor {
+    position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999;
+    width: 28px; height: 28px;
+    transform: translate(-50%, -50%);
+    transition: transform .1s ease;
+    display: none;
+  }
+  #hck-cursor.active { display: block; }
+  #hck-cursor.clicking { transform: translate(-50%,-50%) scale(.65); }
+  #hck-cursor.hovering { transform: translate(-50%,-50%) scale(1.45); }
+  .trail-dot {
+    position: fixed; pointer-events: none; z-index: 9998;
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--accent);
+    transform: translate(-50%,-50%);
+    opacity: 0;
+    transition: opacity .5s;
+  }
+}
+
+/* Scanlines */
+#hck-scanlines {
+  position: fixed; inset: 0; pointer-events: none; z-index: 9990;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,0,0,.055) 2px, rgba(0,0,0,.055) 4px
+  );
+  animation: hck-scanroll 12s linear infinite;
+}
+@keyframes hck-scanroll {
+  from { background-position: 0 0; }
+  to   { background-position: 0 80px; }
+}
+
+/* Film grain noise */
+#hck-noise {
+  position: fixed; inset: 0; pointer-events: none; z-index: 9989;
+  opacity: .022;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px;
+  animation: hck-noise .15s steps(1) infinite;
+}
+@keyframes hck-noise {
+  0%  { background-position: 0 0; }
+  25% { background-position: 50px 30px; }
+  50% { background-position: -30px 50px; }
+  75% { background-position: 80px -40px; }
+}
+
+/* Glitch on brand name */
+.brand-name { position: relative; display: inline-block; }
+.brand-name::before,
+.brand-name::after {
+  content: attr(data-text);
+  position: absolute; top: 0; left: 0; width: 100%;
+  font: inherit; color: inherit; pointer-events: none; overflow: hidden;
+}
+.brand-name::before {
+  color: #ff2d78;
+  clip-path: polygon(0 12%, 100% 12%, 100% 40%, 0 40%);
+  animation: hck-glitch-a 7s infinite;
+}
+.brand-name::after {
+  color: #00e5ff;
+  clip-path: polygon(0 58%, 100% 58%, 100% 78%, 0 78%);
+  animation: hck-glitch-b 7s infinite;
+}
+@keyframes hck-glitch-a {
+  0%,87%,92%,100% { opacity: 0; transform: none; }
+  88% { opacity: 1; clip-path: polygon(0 8%,  100% 8%,  100% 44%, 0 44%); transform: translateX(-3px); }
+  90% { clip-path:   polygon(0 52%, 100% 52%, 100% 72%, 0 72%); transform: translateX(3px); }
+}
+@keyframes hck-glitch-b {
+  0%,87%,92%,100% { opacity: 0; transform: none; }
+  89% { opacity: 1; clip-path: polygon(0 44%, 100% 44%, 100% 68%, 0 68%); transform: translateX(2px); }
+  91% { clip-path:   polygon(0 10%, 100% 10%, 100% 28%, 0 28%); transform: translateX(-2px); }
+}
+
+/* Scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .5s ease, transform .5s ease;
+}
+.reveal.visible { opacity: 1; transform: none; }
+
+/* Enhanced challenge card hover */
+.chal:hover {
+  transform: translateY(-4px) scale(1.012);
+  border-color: hsl(var(--hue) 80% 60% / .75);
+  box-shadow: 0 14px 38px hsl(var(--hue) 80% 50% / .28),
+              0 0 0 1px hsl(var(--hue) 80% 60% / .18),
+              inset 0 0 24px hsl(var(--hue) 80% 50% / .04);
+}
+
+/* Page content fade-in */
+@keyframes hck-fadein {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.container { animation: hck-fadein .3s ease both; }
+
 /* ── Base variables (default theme) ─────────────────── */
 :root {
   --bg: #05070d;
@@ -513,7 +623,10 @@ input.mini { width: 9rem; padding: .2rem .5rem; font-size: .85rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-  .bg-canvas { display: none; }
+  .bg-canvas, #hck-scanlines, #hck-noise, #hck-cursor { display: none !important; }
+  .reveal { opacity: 1; transform: none; }
+  .brand-name::before, .brand-name::after { display: none; }
+  .container { animation: none; }
 }
 
 /* ── Admin: Theme picker ────────────────────────────── */

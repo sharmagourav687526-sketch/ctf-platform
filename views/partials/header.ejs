@@ -12,9 +12,24 @@
 <body data-auth="<%= user ? '1' : '0' %>" data-mode="<%= settings.mode %>">
 <canvas id="bg" class="bg-canvas" aria-hidden="true"></canvas>
 <div class="bg-glow" aria-hidden="true"></div>
+<div id="hck-scanlines" aria-hidden="true"></div>
+<div id="hck-noise" aria-hidden="true"></div>
+<div id="hck-cursor" aria-hidden="true">
+  <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" width="28" height="28">
+    <circle cx="14" cy="14" r="11" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 3" opacity=".5">
+      <animateTransform attributeName="transform" type="rotate" from="0 14 14" to="360 14 14" dur="8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="14" cy="14" r="6" stroke="var(--accent)" stroke-width="1.5"/>
+    <line x1="14" y1="1"  x2="14" y2="6"  stroke="var(--accent)" stroke-width="1.5"/>
+    <line x1="14" y1="22" x2="14" y2="27" stroke="var(--accent)" stroke-width="1.5"/>
+    <line x1="1"  y1="14" x2="6"  y2="14" stroke="var(--accent)" stroke-width="1.5"/>
+    <line x1="22" y1="14" x2="27" y2="14" stroke="var(--accent)" stroke-width="1.5"/>
+    <circle cx="14" cy="14" r="2" fill="var(--accent)"/>
+  </svg>
+</div>
 <a href="#content" class="skip-link">Skip to content</a>
 <header class="topbar">
-  <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">&gt;_</span><span class="brand-name"><%= settings.ctf_name %></span></a>
+  <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">&gt;_</span><span class="brand-name" data-text="<%= settings.ctf_name %>"><%= settings.ctf_name %></span></a>
   <button type="button" class="nav-toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="main-nav">&#9776;</button>
   <nav id="main-nav" class="nav">
     <a href="/challenges" class="<%= path.startsWith('/challenges') ? 'active' : '' %>">Challenges</a>

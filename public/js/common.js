@@ -234,4 +234,62 @@
     primeBaseline();
     connectSSE();
   }
+
+  // ---------- Hacking UX effects ----------
+  if (!reduceMotion && window.matchMedia('(pointer: fine)').matches) {
+    var hckCursor = document.getElementById('hck-cursor');
+    if (hckCursor) {
+      hckCursor.classList.add('active');
+
+      document.addEventListener('mousemove', function (e) {
+        hckCursor.style.left = e.clientX + 'px';
+        hckCursor.style.top  = e.clientY + 'px';
+        spawnTrail(e.clientX, e.clientY);
+      });
+      document.addEventListener('mousedown', function () { hckCursor.classList.add('clicking'); });
+      document.addEventListener('mouseup',   function () { hckCursor.classList.remove('clicking'); });
+      document.addEventListener('mouseover', function (e) {
+        if (e.target.closest('button,a,input,select,textarea,label,[role="button"]'))
+          hckCursor.classList.add('hovering');
+        else
+          hckCursor.classList.remove('hovering');
+      });
+    }
+
+    var trailThrottle = 0;
+    function spawnTrail(x, y) {
+      var now = Date.now();
+      if (now - trailThrottle < 30) return;
+      trailThrottle = now;
+      var dot = document.createElement('div');
+      dot.className = 'trail-dot';
+      dot.style.left = x + 'px';
+      dot.style.top  = y + 'px';
+      document.body.appendChild(dot);
+      requestAnimationFrame(function () {
+        dot.style.opacity = '.55';
+        setTimeout(function () {
+          dot.style.opacity = '0';
+          setTimeout(function () { if (dot.parentNode) dot.parentNode.removeChild(dot); }, 500);
+        }, 60);
+      });
+    }
+  }
+
+  if (!reduceMotion && window.IntersectionObserver) {
+    var revealObs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          revealObs.unobserve(entry.target);
+        }
+      });
+    }, { threshold: .08 });
+
+    document.querySelectorAll('.chal').forEach(function (el, i) {
+      el.classList.add('reveal');
+      el.style.transitionDelay = Math.min(i * 35, 350) + 'ms';
+      revealObs.observe(el);
+    });
+  }
 })();
