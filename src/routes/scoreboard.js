@@ -3,6 +3,7 @@
 const express = require('express');
 const { computeScoreboard, challengeValue, solveCounts } = require('../scoring');
 const scoreCache = require('../scoreboardCache');
+const sse = require('../services/sse');
 const { recentActivity, siteStats } = require('../services/activity');
 const { flash, requireLogin } = require('../middleware');
 const { randomHex } = require('../utils');
@@ -58,12 +59,25 @@ module.exports = function scoreboardRoutes(db) {
 
   router.get('/api/scoreboard', canView, (req, res) => {
     const { standings, timelines } = scoreCache.get(db, req.settings.mode, computeScoreboard);
+    const offset = Math.max(0, Number(req.query.offset) || 0);
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 200));
+    const page = standings.slice(offset, offset + limit);
     res.set('Cache-Control', 'no-store');
     res.json({
       mode: req.settings.mode,
-      standings: standings.slice(0, 200).map((o) => ({ rank: o.rank, type: o.type, id: o.id, name: o.name, score: o.score, solves: o.solves })),
-      series: standings.slice(0, 10).map((o) => ({ name: o.name, points: timelines.get(`${o.type}:${o.id}`) })),
+      total: standings.length,
+      offset,
+      limit,
+      standings: page.map((o) => ({ rank: o.rank, type: o.type, id: o.id, name: o.name, score: o.score, solves: o.solves })),
+      // Graph series only for the first page (top 10 regardless of offset).
+      series: offset === 0 ? standings.slice(0, 10).map((o) => ({ name: o.name, points: timelines.get(`${o.type}:${o.id}`) })) : [],
     });
+  });
+
+  // SSE stream: pushes solve/announcement events to connected players without polling.
+  router.get('/api/events', canView, (req, res) => {
+    const cleanup = sse.addClient(res);
+    req.on('close', cleanup);
   });
 
   function solveHistory(where, param) {

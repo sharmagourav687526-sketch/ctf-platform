@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const qrcode = require('qrcode');
 const rateLimit = require('express-rate-limit');
 const config = require('../config');
 const { flash, requireLogin, verifyCaptcha } = require('../middleware');
@@ -17,24 +18,62 @@ function validatePassword(pw) {
   return null;
 }
 
-// Generate a secure token and store it in email_tokens.
+// ── Per-account login lockout ──────────────────────────────────────────────
+// In-memory: resets on server restart. Acceptable for single-instance.
+const _failed = new Map(); // lowercased-username → { fails, lockedUntil }
+
+function checkLocked(username) {
+  const s = _failed.get(username.toLowerCase());
+  if (!s || !s.lockedUntil) return null;
+  return Date.now() < s.lockedUntil ? s.lockedUntil : null;
+}
+
+function recordFail(username) {
+  const key = username.toLowerCase();
+  const s = _failed.get(key) || { fails: 0, lockedUntil: null };
+  s.fails += 1;
+  if (s.fails >= config.login.maxFails) {
+    s.lockedUntil = Date.now() + config.login.lockoutMs;
+    s.fails = 0;
+  }
+  _failed.set(key, s);
+}
+
+function clearFails(username) {
+  _failed.delete(username.toLowerCase());
+}
+
+// ── Token helpers ──────────────────────────────────────────────────────────
+
 function createEmailToken(db, userId, type, ttlMs) {
   const token = crypto.randomBytes(32).toString('hex');
   const now = Date.now();
-  // Invalidate any existing token of the same type for this user.
   db.prepare('DELETE FROM email_tokens WHERE user_id = ? AND type = ?').run(userId, type);
   db.prepare('INSERT INTO email_tokens (user_id, token, type, expires_at, created_at) VALUES (?, ?, ?, ?, ?)')
     .run(userId, token, type, now + ttlMs, now);
   return token;
 }
 
-// Consume a token. Returns the user row if valid, null otherwise.
 function consumeToken(db, token, type) {
   const row = db.prepare('SELECT * FROM email_tokens WHERE token = ? AND type = ? AND used = 0').get(token, type);
   if (!row) return null;
   if (Date.now() > row.expires_at) return null;
   db.prepare('UPDATE email_tokens SET used = 1 WHERE id = ?').run(row.id);
   return db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id) || null;
+}
+
+// ── TOTP helpers ───────────────────────────────────────────────────────────
+
+function getAuthenticator() {
+  return require('otplib').authenticator;
+}
+
+function totpCheck(secret, token) {
+  try {
+    return getAuthenticator().check(String(token).replace(/\s/g, ''), secret);
+  } catch {
+    return false;
+  }
 }
 
 module.exports = function authRoutes(db) {
@@ -49,7 +88,7 @@ module.exports = function authRoutes(db) {
     handler: (req, res) => res.status(429).render('error', { title: 'Slow down', message: 'Too many attempts. Try again in a few minutes.' }),
   });
 
-  // ---- Register ----
+  // ── Register ────────────────────────────────────────────────────────────
 
   router.get('/register', (req, res) => {
     if (req.user) return res.redirect('/challenges');
@@ -75,7 +114,6 @@ module.exports = function authRoutes(db) {
 
     const isFirst = db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'").get().n === 0;
     const hash = bcrypt.hashSync(password, config.bcryptRounds);
-    // Email configured → unverified until they click the link. No email → auto-verified.
     const emailVerified = email.isConfigured() && !isFirst ? 0 : 1;
     const info = db.prepare('INSERT INTO users (username, email, password_hash, role, email_verified, created_at) VALUES (?, ?, ?, ?, ?, ?)')
       .run(form.username, form.email, hash, isFirst ? 'admin' : 'user', emailVerified, Date.now());
@@ -83,7 +121,6 @@ module.exports = function authRoutes(db) {
     req.session.regenerate(async (err) => {
       if (err) throw err;
       req.session.userId = info.lastInsertRowid;
-
       if (!emailVerified) {
         const token = createEmailToken(db, info.lastInsertRowid, 'verify', 24 * 60 * 60 * 1000);
         email.sendVerification(form.email, req.settings.ctf_name, token).catch(console.error);
@@ -95,7 +132,7 @@ module.exports = function authRoutes(db) {
     });
   });
 
-  // ---- Login ----
+  // ── Login ───────────────────────────────────────────────────────────────
 
   router.get('/login', (req, res) => {
     if (req.user) return res.redirect('/challenges');
@@ -104,11 +141,37 @@ module.exports = function authRoutes(db) {
 
   router.post('/login', authLimiter, verifyCaptcha, (req, res) => {
     const name = String(req.body.name || '').trim();
+
+    // Per-account lockout check.
+    const lockedUntil = checkLocked(name);
+    if (lockedUntil) {
+      const mins = Math.ceil((lockedUntil - Date.now()) / 60000);
+      return res.status(429).render('login', { title: 'Login', error: `Account locked after too many failed attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`, name });
+    }
+
     const user = db.prepare('SELECT * FROM users WHERE username = ? OR email = ?').get(name, name);
     const hash = user ? user.password_hash : '$2a$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidi';
     const ok = bcrypt.compareSync(String(req.body.password || ''), hash) && user;
-    if (!ok) return res.status(401).render('login', { title: 'Login', error: 'Invalid username or password.', name });
+
+    if (!ok) {
+      if (user) recordFail(user.username);
+      return res.status(401).render('login', { title: 'Login', error: 'Invalid username or password.', name });
+    }
     if (user.banned) return res.status(403).render('login', { title: 'Login', error: 'This account has been banned.', name });
+
+    clearFails(user.username);
+
+    // If TOTP is enabled, pause here and redirect to the verification step.
+    if (user.totp_enabled && user.totp_secret) {
+      const returnTo = req.session.returnTo;
+      return req.session.regenerate((err) => {
+        if (err) throw err;
+        req.session.pendingTotpId = user.id;
+        req.session.pendingTotpExpires = Date.now() + 5 * 60 * 1000;
+        if (returnTo) req.session.returnTo = returnTo;
+        res.redirect('/login/verify');
+      });
+    }
 
     const returnTo = req.session.returnTo;
     req.session.regenerate((err) => {
@@ -118,13 +181,43 @@ module.exports = function authRoutes(db) {
     });
   });
 
-  // ---- Logout ----
+  // ── TOTP verification (second factor) ───────────────────────────────────
+
+  router.get('/login/verify', (req, res) => {
+    if (!req.session.pendingTotpId || Date.now() > (req.session.pendingTotpExpires || 0)) {
+      return res.redirect('/login');
+    }
+    res.render('login_totp', { title: 'Two-factor authentication', error: null });
+  });
+
+  router.post('/login/verify', authLimiter, (req, res) => {
+    const userId = req.session.pendingTotpId;
+    if (!userId || Date.now() > (req.session.pendingTotpExpires || 0)) {
+      return res.redirect('/login');
+    }
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    if (!user || !user.totp_secret) {
+      delete req.session.pendingTotpId;
+      return res.redirect('/login');
+    }
+    if (!totpCheck(user.totp_secret, req.body.code)) {
+      return res.render('login_totp', { title: 'Two-factor authentication', error: 'Invalid code. Try again.' });
+    }
+    const returnTo = req.session.returnTo;
+    req.session.regenerate((err) => {
+      if (err) throw err;
+      req.session.userId = user.id;
+      res.redirect(typeof returnTo === 'string' && /^\/(?!\/)/.test(returnTo) ? returnTo : '/challenges');
+    });
+  });
+
+  // ── Logout ──────────────────────────────────────────────────────────────
 
   router.post('/logout', (req, res) => {
     req.session.destroy(() => res.redirect('/'));
   });
 
-  // ---- Email verification ----
+  // ── Email verification ───────────────────────────────────────────────────
 
   router.get('/verify-email', (req, res) => {
     const token = String(req.query.token || '');
@@ -134,25 +227,19 @@ module.exports = function authRoutes(db) {
       return res.render('verify_email', { title: 'Verify email', success: false, message: 'This verification link is invalid or has expired.' });
     }
     db.prepare('UPDATE users SET email_verified = 1 WHERE id = ?').run(user.id);
-    res.render('verify_email', { title: 'Verify email', success: true, message: 'Your email has been verified. You\'re all set!' });
+    res.render('verify_email', { title: 'Verify email', success: true, message: "Your email has been verified. You're all set!" });
   });
 
   router.post('/resend-verification', requireLogin, authLimiter, (req, res) => {
-    if (req.user.email_verified) {
-      flash(req, 'info', 'Your email is already verified.');
-      return res.redirect('/settings');
-    }
-    if (!email.isConfigured()) {
-      flash(req, 'error', 'Email is not configured on this platform.');
-      return res.redirect('/settings');
-    }
+    if (req.user.email_verified) { flash(req, 'info', 'Your email is already verified.'); return res.redirect('/settings'); }
+    if (!email.isConfigured()) { flash(req, 'error', 'Email is not configured on this platform.'); return res.redirect('/settings'); }
     const token = createEmailToken(db, req.user.id, 'verify', 24 * 60 * 60 * 1000);
     email.sendVerification(req.user.email, req.settings.ctf_name, token).catch(console.error);
     flash(req, 'success', 'Verification email sent. Check your inbox.');
     res.redirect('/settings');
   });
 
-  // ---- Forgot password ----
+  // ── Forgot / reset password ──────────────────────────────────────────────
 
   router.get('/forgot-password', (req, res) => {
     if (req.user) return res.redirect('/settings');
@@ -161,10 +248,8 @@ module.exports = function authRoutes(db) {
 
   router.post('/forgot-password', authLimiter, (req, res) => {
     const addr = String(req.body.email || '').trim().toLowerCase();
-    // Always render "sent" to avoid leaking whether an email is registered.
     const done = () => res.render('forgot_password', { title: 'Forgot password', sent: true, error: null });
     if (!email.isConfigured()) {
-      // Platform has no email — tell them to contact an admin.
       return res.render('forgot_password', { title: 'Forgot password', sent: false, error: 'Email is not configured. Ask an admin to reset your password.' });
     }
     if (!EMAIL_RE.test(addr)) return done();
@@ -187,25 +272,18 @@ module.exports = function authRoutes(db) {
 
   router.post('/reset-password', authLimiter, (req, res) => {
     const token = String(req.body.token || '');
-    const invalid = () => res.render('reset_password', { title: 'Reset password', valid: false, token: '', error: null });
     const user = consumeToken(db, token, 'reset');
-    if (!user) return invalid();
+    if (!user) return res.render('reset_password', { title: 'Reset password', valid: false, token: '', error: null });
     const pwError = validatePassword(req.body.password);
-    if (pwError) {
-      return res.render('reset_password', { title: 'Reset password', valid: true, token, error: pwError });
-    }
-    if (req.body.password !== req.body.confirm) {
-      return res.render('reset_password', { title: 'Reset password', valid: true, token, error: 'Passwords do not match.' });
-    }
-    const hash = bcrypt.hashSync(req.body.password, config.bcryptRounds);
-    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, user.id);
-    // Invalidate all live sessions for this user.
+    if (pwError) return res.render('reset_password', { title: 'Reset password', valid: true, token, error: pwError });
+    if (req.body.password !== req.body.confirm) return res.render('reset_password', { title: 'Reset password', valid: true, token, error: 'Passwords do not match.' });
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(req.body.password, config.bcryptRounds), user.id);
     db.prepare("DELETE FROM sessions WHERE json_extract(sess, '$.userId') = ?").run(user.id);
     flash(req, 'success', 'Password reset. You can now log in with your new password.');
     res.redirect('/login');
   });
 
-  // ---- Settings (change password / country) ----
+  // ── Settings (profile + password change) ────────────────────────────────
 
   router.get('/settings', requireLogin, (req, res) => {
     res.render('settings', { title: 'Settings', error: null });
@@ -223,6 +301,45 @@ module.exports = function authRoutes(db) {
     }
     db.prepare('UPDATE users SET country = ? WHERE id = ?').run(country, req.user.id);
     flash(req, 'success', 'Settings saved.');
+    res.redirect('/settings');
+  });
+
+  // ── 2FA setup ────────────────────────────────────────────────────────────
+
+  router.get('/settings/2fa/setup', requireLogin, async (req, res, next) => {
+    try {
+      const auth = getAuthenticator();
+      const secret = auth.generateSecret();
+      req.session.pendingTotpSecret = secret;
+      const otpauthUrl = auth.keyuri(req.user.username, req.settings.ctf_name, secret);
+      const qrDataUrl = await qrcode.toDataURL(otpauthUrl);
+      res.render('settings_2fa', { title: 'Enable two-factor auth', secret, qrDataUrl, error: null });
+    } catch (e) { next(e); }
+  });
+
+  router.post('/settings/2fa/enable', requireLogin, authLimiter, async (req, res, next) => {
+    try {
+      const secret = req.session.pendingTotpSecret;
+      if (!secret) return res.redirect('/settings/2fa/setup');
+      if (!totpCheck(secret, req.body.code)) {
+        const auth = getAuthenticator();
+        const otpauthUrl = auth.keyuri(req.user.username, req.settings.ctf_name, secret);
+        const qrDataUrl = await qrcode.toDataURL(otpauthUrl);
+        return res.render('settings_2fa', { title: 'Enable two-factor auth', secret, qrDataUrl, error: 'Invalid code — try again.' });
+      }
+      delete req.session.pendingTotpSecret;
+      db.prepare('UPDATE users SET totp_secret = ?, totp_enabled = 1 WHERE id = ?').run(secret, req.user.id);
+      flash(req, 'success', 'Two-factor authentication is now enabled.');
+      res.redirect('/settings');
+    } catch (e) { next(e); }
+  });
+
+  router.post('/settings/2fa/disable', requireLogin, authLimiter, (req, res) => {
+    if (!bcrypt.compareSync(String(req.body.password || ''), req.user.password_hash)) {
+      return res.status(400).render('settings', { title: 'Settings', error: 'Current password is incorrect.' });
+    }
+    db.prepare('UPDATE users SET totp_secret = NULL, totp_enabled = 0 WHERE id = ?').run(req.user.id);
+    flash(req, 'success', 'Two-factor authentication disabled.');
     res.redirect('/settings');
   });
 

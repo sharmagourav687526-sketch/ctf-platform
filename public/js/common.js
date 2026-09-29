@@ -182,29 +182,49 @@
   }
 
   // ---------- live solve notifications (signed-in players) ----------
+  // Use SSE when available; fall back to polling on reconnect only.
   var session = safeStorage('sessionStorage');
   if (document.body.getAttribute('data-auth') === '1' && session) {
     var lastId = session.getItem('ctf.lastSolve');
-    var poll = function () {
-      if (document.hidden) return;
-      var baseline = lastId === null;
-      fetch('/api/activity?since=' + (baseline ? 0 : lastId) + '&limit=' + (baseline ? 1 : 10), { headers: { Accept: 'application/json' } })
+    var sseActive = false;
+
+    // Prime the baseline so we don't toast stale solves on first load.
+    var primeBaseline = function () {
+      if (lastId !== null) return;
+      fetch('/api/activity?since=0&limit=1', { headers: { Accept: 'application/json' } })
         .then(function (r) { return r.ok ? r.json() : []; })
         .then(function (items) {
-          if (!items.length) { if (baseline) { lastId = '0'; session.setItem('ctf.lastSolve', lastId); } return; }
-          var newest = items.reduce(function (m, a) { return Math.max(m, a.id); }, 0);
-          if (!baseline) {
-            items.slice(0, 3).reverse().forEach(function (a) {
-              if (a.firstBlood) toast('🩸 ' + a.who + ' got FIRST BLOOD on "' + a.challenge + '"!', 'blood', 8000);
-              else toast('🚩 ' + a.who + ' solved "' + a.challenge + '" (+' + a.value + ')', 'ok');
-            });
+          if (!items.length) { lastId = '0'; } else {
+            lastId = String(items.reduce(function (m, a) { return Math.max(m, a.id); }, 0));
           }
-          lastId = String(newest);
           session.setItem('ctf.lastSolve', lastId);
-        })
-        .catch(function () { /* transient network error: try again next tick */ });
+        }).catch(function () {});
     };
-    poll();
-    setInterval(poll, 20000);
+
+    var connectSSE = function () {
+      if (!window.EventSource) return;
+      var es = new window.EventSource('/api/events');
+      sseActive = true;
+      es.addEventListener('solve', function (e) {
+        var a;
+        try { a = JSON.parse(e.data); } catch (ex) { return; }
+        if (a.firstBlood) toast('🩸 ' + a.who + ' got FIRST BLOOD on "' + a.challenge + '"!', 'blood', 8000);
+        else toast('🚩 ' + a.who + ' solved "' + a.challenge + '" (+' + a.points + ')', 'ok');
+      });
+      es.addEventListener('announcement', function (e) {
+        var a;
+        try { a = JSON.parse(e.data); } catch (ex) { return; }
+        toast('📢 ' + a.title, 'info', 8000);
+      });
+      es.onerror = function () {
+        es.close();
+        sseActive = false;
+        // Brief back-off before reconnect.
+        setTimeout(connectSSE, 10000);
+      };
+    };
+
+    primeBaseline();
+    connectSSE();
   }
 })();

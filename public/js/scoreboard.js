@@ -158,17 +158,65 @@
     });
   }
 
+  // Pagination state.
+  var totalStandings = 0;
+  var loadedStandings = 0;
+  var PAGE = 200;
+  var loadMoreBtn = null;
+
+  function ensureLoadMoreBtn() {
+    if (loadMoreBtn) return;
+    loadMoreBtn = el('button', 'btn btn-secondary');
+    loadMoreBtn.textContent = 'Load more';
+    loadMoreBtn.addEventListener('click', function () {
+      if (loadedStandings >= totalStandings) return;
+      fetch('/api/scoreboard?offset=' + loadedStandings + '&limit=' + PAGE, { headers: { Accept: 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data) return;
+          data.standings.forEach(function (o) {
+            var tr = el('tr', o.rank <= 3 ? 'rank-row-' + o.rank : '');
+            tr.appendChild(el('td', null, String(o.rank)));
+            var name = el('td');
+            var wrap = el('span', 'nav-user');
+            wrap.appendChild(avatar(o.name));
+            wrap.appendChild(link(o));
+            name.appendChild(wrap);
+            tr.appendChild(name);
+            tr.appendChild(el('td', 'num', String(o.solves)));
+            tr.appendChild(el('td', 'num', String(o.score)));
+            tbody.appendChild(tr);
+          });
+          loadedStandings += data.standings.length;
+          totalStandings = data.total;
+          window.CTF.paint(document);
+          if (loadedStandings >= totalStandings && loadMoreBtn.parentNode) {
+            loadMoreBtn.parentNode.removeChild(loadMoreBtn);
+          }
+        }).catch(function () {});
+    });
+    tbody.parentNode.parentNode.appendChild(loadMoreBtn);
+  }
+
   var last = null;
   function load() {
-    fetch('/api/scoreboard', { headers: { Accept: 'application/json' } })
+    fetch('/api/scoreboard?limit=' + PAGE, { headers: { Accept: 'application/json' } })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
         if (!data) return;
         last = data;
+        totalStandings = data.total;
+        loadedStandings = data.standings.length;
         renderPodium(data);
         renderTable(data);
         renderChart(data.series);
         window.CTF.paint(document);
+        if (totalStandings > loadedStandings) {
+          ensureLoadMoreBtn();
+          loadMoreBtn.style.display = '';
+        } else if (loadMoreBtn) {
+          loadMoreBtn.style.display = 'none';
+        }
       })
       .catch(function () { /* transient network error: keep the previous view */ });
     fetch('/api/activity?limit=15', { headers: { Accept: 'application/json' } })
@@ -177,7 +225,25 @@
       .catch(function () { /* keep previous feed */ });
   }
 
+  // Use SSE to refresh on solves instead of a fixed interval.
+  var refreshTimer = null;
+  function scheduleRefresh(ms) {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(function () { if (!document.hidden) load(); }, ms || 1500);
+  }
+
+  if (window.EventSource) {
+    var es = new window.EventSource('/api/events');
+    es.addEventListener('solve', function () { scheduleRefresh(1500); });
+    es.onerror = function () {
+      // Fall back to polling if SSE breaks.
+      setInterval(function () { if (!document.hidden) load(); }, 15000);
+      es.close();
+    };
+  } else {
+    setInterval(function () { if (!document.hidden) load(); }, 15000);
+  }
+
   window.addEventListener('resize', function () { if (last) renderChart(last.series); });
   load();
-  setInterval(function () { if (!document.hidden) load(); }, 15000);
 })();

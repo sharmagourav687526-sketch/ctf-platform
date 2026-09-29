@@ -4,6 +4,8 @@ const { checkFlag } = require('./flags');
 const { challengeValue, ownerOf, solveCounts } = require('../scoring');
 const { solversOf } = require('./activity');
 const scoreCache = require('../scoreboardCache');
+const sse = require('./sse');
+const discord = require('./discord');
 
 const ATTEMPTS_PER_MINUTE = 10;
 
@@ -111,6 +113,14 @@ function submitFlag(db, { settings, user, challengeId, provided, ip, now = Date.
     db.prepare('INSERT INTO solves (challenge_id, user_id, team_id, created_at) VALUES (?, ?, ?, ?)').run(ch.id, user.id, teamId, now);
     scoreCache.invalidate();
     const value = challengeValue(ch, solveCounts(db).get(ch.id) || 0);
+    const who = mode === 'teams'
+      ? (db.prepare('SELECT name FROM teams WHERE id = ?').get(teamId) || {}).name || user.username
+      : user.username;
+    // Fire-and-forget notifications (never block the response).
+    setImmediate(() => {
+      sse.broadcast('solve', { challenge: ch.name, who, points: value, firstBlood });
+      discord.notifySolve({ challenge: ch.name, who, points: value, firstBlood }).catch(() => {});
+    });
     return { status: 'correct', message: firstBlood ? `Correct! First blood! +${value} points` : `Correct! +${value} points`, firstBlood, value };
   })();
 }

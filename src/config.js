@@ -44,7 +44,15 @@ module.exports = {
   s3: {
     bucket: process.env.S3_BUCKET || '',
     region: process.env.S3_REGION || 'us-east-1',
-    endpoint: process.env.S3_ENDPOINT || '',   // for MinIO / Cloudflare R2
-    publicUrl: process.env.S3_PUBLIC_URL || '', // CDN or bucket URL (no trailing slash)
+    endpoint: process.env.S3_ENDPOINT || '',
+    publicUrl: process.env.S3_PUBLIC_URL || '',
+  },
+  discord: {
+    webhookUrl: process.env.DISCORD_WEBHOOK_URL || '',
+    firstBloodOnly: process.env.DISCORD_FIRST_BLOOD_ONLY === '1',
+  },
+  login: {
+    maxFails: Number(process.env.LOGIN_MAX_FAILS) || 10,
+    lockoutMs: (Number(process.env.LOGIN_LOCKOUT_MINUTES) || 15) * 60 * 1000,
   },
 };

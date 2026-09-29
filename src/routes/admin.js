@@ -11,6 +11,8 @@ const { toCsv, parseEpoch, renderMarkdown } = require('../utils');
 const { validatePassword } = require('./auth');
 const storage = require('../services/storage');
 const scoreCache = require('../scoreboardCache');
+const audit = require('../services/audit');
+const discord = require('../services/discord');
 
 const PAGE_SIZE = 50;
 const MAX_FILES_PER_UPLOAD = 10;
@@ -132,6 +134,7 @@ module.exports = function adminRoutes(db, config) {
       storeFiles(info.lastInsertRowid, req.files);
       return info.lastInsertRowid;
     })();
+    audit.log(db, req, 'challenge.create', values.name, `category=${values.category} points=${values.points}`);
     flash(req, 'success', 'Challenge created.');
     res.redirect(`/admin/challenges/${id}/edit`);
   });
@@ -165,15 +168,18 @@ module.exports = function adminRoutes(db, config) {
     db.prepare(`UPDATE challenges SET name=@name, category=@category, description=@description, connection_info=@connection_info,
       points=@points, min_points=@min_points, decay=@decay, max_attempts=@max_attempts, visible=@visible, requires_id=@requires_id WHERE id=@id`)
       .run({ ...values, id });
+    audit.log(db, req, 'challenge.edit', values.name, `id=${id} visible=${values.visible}`);
     flash(req, 'success', 'Challenge saved.');
     res.redirect(`/admin/challenges/${id}/edit`);
   });
 
   router.post('/challenges/:id/delete', (req, res) => {
     const id = Number(req.params.id);
+    const ch = db.prepare('SELECT name FROM challenges WHERE id = ?').get(id);
     const files = db.prepare('SELECT stored_name FROM files WHERE challenge_id = ?').all(id);
     db.prepare('DELETE FROM challenges WHERE id = ?').run(id);
     for (const f of files) storage.deleteFile(f.stored_name);
+    if (ch) audit.log(db, req, 'challenge.delete', ch.name, `id=${id}`);
     flash(req, 'success', 'Challenge deleted.');
     res.redirect('/admin/challenges');
   });
@@ -274,6 +280,7 @@ module.exports = function adminRoutes(db, config) {
       // Invalidate their live sessions.
       db.prepare("DELETE FROM sessions WHERE json_extract(sess, '$.userId') = ?").run(id);
     }
+    audit.log(db, req, `user.${action}`, target.username, `id=${id}`);
     flash(req, 'success', `User ${target.username}: ${action} done.`);
     back(req, res, '/admin/users');
   });
@@ -296,7 +303,9 @@ module.exports = function adminRoutes(db, config) {
     };
     const sql = actions[req.params.action];
     if (!sql) return res.status(400).render('error', { title: 'Bad request', message: 'Unknown action.' });
+    const team = db.prepare('SELECT name FROM teams WHERE id = ?').get(id);
     db.prepare(sql).run(id);
+    if (team) audit.log(db, req, `team.${req.params.action}`, team.name, `id=${id}`);
     flash(req, 'success', 'Team updated.');
     res.redirect('/admin/teams');
   });
@@ -324,6 +333,7 @@ module.exports = function adminRoutes(db, config) {
       db.prepare('DELETE FROM submissions WHERE id = ?').run(s.id);
     })();
     scoreCache.invalidate();
+    audit.log(db, req, 'submission.delete', String(req.params.id));
     flash(req, 'success', 'Submission removed.');
     back(req, res, '/admin/submissions');
   });
@@ -339,6 +349,7 @@ module.exports = function adminRoutes(db, config) {
       db.prepare('INSERT INTO awards (user_id, team_id, name, value, created_at) VALUES (?, ?, ?, ?, ?)')
         .run(user.id, req.settings.mode === 'teams' ? user.team_id : null, name, value, Date.now());
       scoreCache.invalidate();
+      audit.log(db, req, 'award.create', user.username, `value=${value} reason=${name}`);
       flash(req, 'success', `Awarded ${value} points to ${user.username}.`);
     }
     res.redirect('/admin');
@@ -352,12 +363,18 @@ module.exports = function adminRoutes(db, config) {
   router.post('/announcements', (req, res) => {
     const title = String(req.body.title || '').trim().slice(0, 150);
     const body = String(req.body.body || '').trim().slice(0, 5000);
-    if (title && body) db.prepare('INSERT INTO announcements (title, body, created_at) VALUES (?, ?, ?)').run(title, body, Date.now());
+    if (title && body) {
+      db.prepare('INSERT INTO announcements (title, body, created_at) VALUES (?, ?, ?)').run(title, body, Date.now());
+      audit.log(db, req, 'announcement.create', title);
+      setImmediate(() => discord.notifyAnnouncement({ title, body }).catch(() => {}));
+    }
     res.redirect('/admin/announcements');
   });
 
   router.post('/announcements/:id/delete', (req, res) => {
+    const ann = db.prepare('SELECT title FROM announcements WHERE id = ?').get(Number(req.params.id));
     db.prepare('DELETE FROM announcements WHERE id = ?').run(Number(req.params.id));
+    if (ann) audit.log(db, req, 'announcement.delete', ann.title);
     res.redirect('/admin/announcements');
   });
 
@@ -388,8 +405,19 @@ module.exports = function adminRoutes(db, config) {
       setSetting(db, 'start_time', start);
       setSetting(db, 'end_time', end);
     })();
+    audit.log(db, req, 'settings.save', '', `mode=${mode} reg=${req.body.registration_open === '1' ? 'open' : 'closed'}`);
     flash(req, 'success', 'Settings saved.');
     res.redirect('/admin/settings');
+  });
+
+  // ---------- Audit log ----------
+  router.get('/audit', requireAdmin, (req, res) => {
+    const page = int(req.query.page, 1, 100000, 1);
+    const total = db.prepare('SELECT COUNT(*) AS n FROM audit_log').get().n;
+    const rows = db.prepare(`
+      SELECT a.*, u.username FROM audit_log a JOIN users u ON u.id = a.admin_id
+      ORDER BY a.created_at DESC LIMIT ? OFFSET ?`).all(PAGE_SIZE, (page - 1) * PAGE_SIZE);
+    res.render('admin/audit', { title: 'Audit log', rows, page, pages: Math.max(1, Math.ceil(total / PAGE_SIZE)) });
   });
 
   // ---------- Exports ----------

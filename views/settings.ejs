@@ -16,5 +16,20 @@
     </label>
     <button type="submit" class="btn">Save</button>
   </form>
+
+  <h2 style="margin-top:2rem">Two-factor authentication</h2>
+  <% if (user.totp_enabled) { %>
+    <p>2FA is <strong>enabled</strong>. You need your authenticator app to log in.</p>
+    <form method="post" action="/settings/2fa/disable" class="form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Current password (required to disable 2FA)
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <button type="submit" class="btn btn-danger">Disable 2FA</button>
+    </form>
+  <% } else { %>
+    <p class="muted">2FA is not enabled. Add an extra layer of security to your account.</p>
+    <a href="/settings/2fa/setup" class="btn">Enable 2FA</a>
+  <% } %>
 </section>
 <%- include('partials/footer') %>

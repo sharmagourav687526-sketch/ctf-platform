@@ -15,6 +15,8 @@ const USERS_TABLE = `CREATE TABLE users (
   hidden         INTEGER NOT NULL DEFAULT 0,
   banned         INTEGER NOT NULL DEFAULT 0,
   email_verified INTEGER NOT NULL DEFAULT 0,
+  totp_secret    TEXT,
+  totp_enabled   INTEGER NOT NULL DEFAULT 0,
   created_at     INTEGER NOT NULL
 )`;
 
@@ -150,6 +152,17 @@ CREATE TABLE IF NOT EXISTS email_tokens (
   used       INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id         INTEGER PRIMARY KEY,
+  admin_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  action     TEXT NOT NULL,
+  target     TEXT NOT NULL DEFAULT '',
+  detail     TEXT NOT NULL DEFAULT '',
+  ip         TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at);
 `;
 
 const DEFAULT_SETTINGS = {
@@ -184,10 +197,16 @@ function openDb(file) {
     db.pragma('legacy_alter_table = OFF');
     db.pragma('foreign_keys = ON');
   }
-  // Migration: add email_verified column. Existing users default to 1 (already trusted).
+  // Migrations: add new user columns if upgrading from an older schema.
   const userCols = db.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
   if (!userCols.includes('email_verified')) {
     db.exec('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1');
+  }
+  if (!userCols.includes('totp_secret')) {
+    db.exec('ALTER TABLE users ADD COLUMN totp_secret TEXT');
+  }
+  if (!userCols.includes('totp_enabled')) {
+    db.exec('ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0');
   }
 
   const seed = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');

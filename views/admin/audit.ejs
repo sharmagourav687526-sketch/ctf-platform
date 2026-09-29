@@ -1,0 +1,32 @@
+<%- include('../partials/header') %>
+<%- include('../partials/admin_nav') %>
+<h1>Audit log</h1>
+<% if (rows.length === 0) { %>
+  <p class="muted">No audit entries yet.</p>
+<% } else { %>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Time</th><th>Admin</th><th>Action</th><th>Target</th><th>Detail</th><th>IP</th></tr>
+    </thead>
+    <tbody>
+      <% for (const r of rows) { %>
+      <tr>
+        <td class="muted small" style="white-space:nowrap"><%= new Date(r.created_at).toISOString().replace('T',' ').slice(0,19) %></td>
+        <td><a href="/users/<%= r.admin_id %>"><%= r.username %></a></td>
+        <td><code><%= r.action %></code></td>
+        <td><%= r.target %></td>
+        <td class="muted small"><%= r.detail %></td>
+        <td class="muted small"><%= r.ip || '' %></td>
+      </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+<nav class="pagination">
+  <% if (page > 1) { %><a href="?page=<%= page - 1 %>" class="btn btn-sm">&larr; Prev</a><% } %>
+  <span class="muted small">Page <%= page %> of <%= pages %></span>
+  <% if (page < pages) { %><a href="?page=<%= page + 1 %>" class="btn btn-sm">Next &rarr;</a><% } %>
+</nav>
+<% } %>
+<%- include('../partials/footer') %>

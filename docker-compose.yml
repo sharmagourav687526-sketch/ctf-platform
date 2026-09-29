@@ -20,6 +20,12 @@ services:
       # CAPTCHA (leave blank to disable)
       TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      # Discord notifications (leave blank to disable)
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+      DISCORD_FIRST_BLOOD_ONLY: ${DISCORD_FIRST_BLOOD_ONLY:-0}
+      # Login lockout
+      LOGIN_MAX_FAILS: ${LOGIN_MAX_FAILS:-10}
+      LOGIN_LOCKOUT_MINUTES: ${LOGIN_LOCKOUT_MINUTES:-15}
       # S3 storage (leave S3_BUCKET blank to use local disk)
       S3_BUCKET: ${S3_BUCKET:-}
       S3_REGION: ${S3_REGION:-us-east-1}
