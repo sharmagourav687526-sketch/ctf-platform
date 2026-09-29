@@ -4,7 +4,7 @@
    ──────────────────────────────────────────────────────────────────────── */
 
 /* Matrix — green/black hacker terminal */
-[data-theme="matrix"] {
+html[data-theme="matrix"] {
   --bg: #020802;
   --panel: rgba(4, 18, 4, .78);
   --panel-solid: #040e04;
@@ -23,7 +23,7 @@
   --matrix-bright: #b8ffb8;
   --bg-fill: rgba(2,8,2,.1);
 }
-[data-theme="matrix"] .bg-glow {
+html[data-theme="matrix"] .bg-glow {
   background:
     radial-gradient(800px 400px at 10% -5%, rgba(0,255,65,.12), transparent 60%),
     radial-gradient(700px 400px at 95% 110%, rgba(0,200,40,.08), transparent 60%),
@@ -32,7 +32,7 @@
 }
 
 /* Blood — crimson / dark red */
-[data-theme="blood"] {
+html[data-theme="blood"] {
   --bg: #0d0203;
   --panel: rgba(25, 4, 6, .78);
   --panel-solid: #190406;
@@ -51,7 +51,7 @@
   --matrix-bright: #ffb0b8;
   --bg-fill: rgba(13,2,3,.1);
 }
-[data-theme="blood"] .bg-glow {
+html[data-theme="blood"] .bg-glow {
   background:
     radial-gradient(800px 400px at 8% -5%, rgba(200,10,30,.18), transparent 60%),
     radial-gradient(700px 400px at 100% 110%, rgba(150,0,20,.12), transparent 60%),
@@ -60,7 +60,7 @@
 }
 
 /* Cyber — neon purple / cyan */
-[data-theme="cyber"] {
+html[data-theme="cyber"] {
   --bg: #050115;
   --panel: rgba(10, 4, 28, .80);
   --panel-solid: #0a041c;
@@ -79,7 +79,7 @@
   --matrix-bright: #f0c0ff;
   --bg-fill: rgba(5,1,15,.1);
 }
-[data-theme="cyber"] .bg-glow {
+html[data-theme="cyber"] .bg-glow {
   background:
     radial-gradient(900px 500px at 8% -5%, rgba(180,40,255,.22), transparent 60%),
     radial-gradient(800px 500px at 100% 110%, rgba(0,220,255,.14), transparent 60%),
@@ -88,7 +88,7 @@
 }
 
 /* Amber — old CRT amber terminal */
-[data-theme="amber"] {
+html[data-theme="amber"] {
   --bg: #0a0500;
   --panel: rgba(22, 10, 0, .80);
   --panel-solid: #160a00;
@@ -107,7 +107,7 @@
   --matrix-bright: #ffe8a0;
   --bg-fill: rgba(10,5,0,.1);
 }
-[data-theme="amber"] .bg-glow {
+html[data-theme="amber"] .bg-glow {
   background:
     radial-gradient(800px 400px at 8% -5%, rgba(200,80,0,.18), transparent 60%),
     radial-gradient(700px 400px at 100% 110%, rgba(180,100,0,.12), transparent 60%),
@@ -116,7 +116,7 @@
 }
 
 /* Ghost — near-monochrome minimal */
-[data-theme="ghost"] {
+html[data-theme="ghost"] {
   --bg: #080810;
   --panel: rgba(16, 16, 26, .82);
   --panel-solid: #10101a;
@@ -135,7 +135,7 @@
   --matrix-bright: #e0e0f8;
   --bg-fill: rgba(8,8,16,.1);
 }
-[data-theme="ghost"] .bg-glow {
+html[data-theme="ghost"] .bg-glow {
   background:
     radial-gradient(800px 400px at 8% -5%, rgba(120,120,200,.14), transparent 60%),
     radial-gradient(700px 400px at 100% 110%, rgba(100,100,180,.10), transparent 60%),
@@ -150,7 +150,7 @@
 
 /* Custom cursor (pointer devices only) */
 @media (pointer: fine) {
-  html { cursor: none !important; }
+  *, *::before, *::after { cursor: none !important; }
   #hck-cursor {
     position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999;
     width: 28px; height: 28px;
