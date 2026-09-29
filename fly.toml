@@ -1,0 +1,26 @@
+app = "ctf-platform"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV   = "production"
+  TRUST_PROXY = "1"
+  PORT       = "3000"
+
+[http_service]
+  internal_port       = 3000
+  force_https         = true
+  auto_stop_machines  = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  memory   = "256mb"
+  cpu_kind = "shared"
+  cpus     = 1
+
+[[mounts]]
+  source      = "ctf_data"
+  destination = "/app/data"
