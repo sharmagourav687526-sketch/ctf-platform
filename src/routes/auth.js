@@ -30,7 +30,7 @@ function createEmailToken(db, userId, type, ttlMs) {
 
 // Consume a token. Returns the user row if valid, null otherwise.
 function consumeToken(db, token, type) {
-  const row = db.prepare('SELECT * FROM email_tokens WHERE token = ? AND type = ? AND used = 0').get(token);
+  const row = db.prepare('SELECT * FROM email_tokens WHERE token = ? AND type = ? AND used = 0').get(token, type);
   if (!row) return null;
   if (Date.now() > row.expires_at) return null;
   db.prepare('UPDATE email_tokens SET used = 1 WHERE id = ?').run(row.id);
