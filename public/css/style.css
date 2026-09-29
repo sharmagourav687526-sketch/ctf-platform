@@ -31,6 +31,54 @@ html[data-theme="matrix"] .bg-glow {
     linear-gradient(90deg, rgba(0,255,65,.03) 1px, transparent 1px) 0 0 / 46px 46px;
 }
 
+/* Matrix: challenge board — match demo aesthetic */
+html[data-theme="matrix"] .category h2 {
+  font-family: var(--mono);
+  font-size: .75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .15em;
+  color: rgba(0,255,65,.45);
+  display: flex; align-items: center; gap: 10px;
+  margin: 1.6rem 0 .8rem;
+}
+html[data-theme="matrix"] .category h2::before { content: '//'; color: var(--accent); flex-shrink: 0; }
+html[data-theme="matrix"] .category h2::after  { content: ''; flex: 1; height: 1px; background: rgba(0,255,65,.1); }
+html[data-theme="matrix"] .category h2 small {
+  font-size: .68rem; letter-spacing: .05em;
+  background: rgba(0,255,65,.07); border: 1px solid rgba(0,255,65,.18);
+  border-radius: 4px; padding: 1px 7px; color: rgba(0,255,65,.55);
+}
+html[data-theme="matrix"] .chal {
+  background: rgba(2,10,2,.75);
+  border: 1px solid rgba(0,255,65,.12);
+  padding: 14px;
+  transition: transform .18s ease, border-color .2s, box-shadow .2s;
+}
+html[data-theme="matrix"] .chal::before { display: none; }
+html[data-theme="matrix"] .chal::after {
+  content: '[ ACCESS ]';
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  background: rgba(2,8,2,.8);
+  font-family: var(--mono); font-weight: 700; font-size: .82rem;
+  letter-spacing: .12em; color: var(--accent);
+  text-shadow: 0 0 12px var(--accent);
+  opacity: 0; transition: opacity .2s;
+  border-radius: var(--radius);
+}
+html[data-theme="matrix"] .chal:hover { border-color: rgba(0,255,65,.55); transform: translateY(-3px) scale(1.01); box-shadow: 0 0 0 1px rgba(0,255,65,.1), 0 10px 30px rgba(0,255,65,.1), inset 0 0 20px rgba(0,255,65,.03); }
+html[data-theme="matrix"] .chal:hover::after { opacity: 1; }
+html[data-theme="matrix"] .chal.solved { border-color: rgba(0,255,65,.3); background: linear-gradient(135deg, rgba(0,255,65,.07), rgba(2,10,2,.75)); }
+html[data-theme="matrix"] .chal.solved::after { content: '[ SOLVED \2713 ]'; color: var(--ok); text-shadow: 0 0 12px var(--ok); }
+html[data-theme="matrix"] .chal-pts  { color: var(--accent); }
+html[data-theme="matrix"] .chal-meta { color: rgba(0,255,65,.4); font-size: .72rem; }
+html[data-theme="matrix"] .chip { border-color: rgba(0,255,65,.18); color: rgba(0,255,65,.55); background: rgba(0,255,65,.04); font-family: var(--mono); font-size: .72rem; }
+html[data-theme="matrix"] .chip:hover, html[data-theme="matrix"] .chip.on, html[data-theme="matrix"] .chip.on-all { color: var(--accent); border-color: var(--accent); background: rgba(0,255,65,.1); text-shadow: 0 0 8px rgba(0,255,65,.5); }
+html[data-theme="matrix"] #search { background: rgba(2,10,2,.75); border-color: rgba(0,255,65,.15); color: var(--text); font-family: var(--mono); }
+html[data-theme="matrix"] #search:focus { border-color: rgba(0,255,65,.45); box-shadow: 0 0 0 3px rgba(0,255,65,.08); }
+html[data-theme="matrix"] .bar { background: rgba(0,255,65,.08); }
+html[data-theme="matrix"] .bar-fill { background: linear-gradient(90deg, rgba(0,200,40,.8), var(--accent)); box-shadow: 0 0 10px rgba(0,255,65,.5); }
+html[data-theme="matrix"] .progress-card { border-color: rgba(0,255,65,.12); background: rgba(2,10,2,.75); }
+
 /* Blood — crimson / dark red */
 html[data-theme="blood"] {
   --bg: #0d0203;
