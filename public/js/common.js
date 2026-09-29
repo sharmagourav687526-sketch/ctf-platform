@@ -201,9 +201,11 @@
         }).catch(function () {});
     };
 
+    var activeEs = null;
     var connectSSE = function () {
       if (!window.EventSource) return;
       var es = new window.EventSource('/api/events');
+      activeEs = es;
       sseActive = true;
       es.addEventListener('solve', function (e) {
         var a;
@@ -218,11 +220,16 @@
       });
       es.onerror = function () {
         es.close();
+        activeEs = null;
         sseActive = false;
         // Brief back-off before reconnect.
         setTimeout(connectSSE, 10000);
       };
     };
+
+    window.addEventListener('pagehide', function () {
+      if (activeEs) { activeEs.close(); activeEs = null; }
+    });
 
     primeBaseline();
     connectSSE();
